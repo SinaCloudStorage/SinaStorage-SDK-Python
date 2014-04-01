@@ -16,14 +16,14 @@
 from sinastorage.bucket import S3Bucket
 import sinastorage
 
-#设置access_key,secret_key [获取access_key,secret_key](http://sinastor.appsina.com/?c=console)
+#设置access_key,secret_key
 sinastorage.setDefaultAppInfo('access_key', 'secret_key')
-
 s = S3Bucket(bucket_name)
-
 print s  
 #<S3Bucket ... at 'http://sinastorage.com/...'>
 ```
+获取[access_key,secret_key](http://sinastor.appsina.com/?c=console)
+
 ###2.bucket 操作:
 *创建bucket
 ```python
