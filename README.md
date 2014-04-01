@@ -11,7 +11,7 @@
 
 ##快速上手
 
-#利用S3Bucket类对bucket进行访问。需要的参数有：
+###利用S3Bucket类对bucket进行访问。需要的参数有：
 ```python
 from sinastorage.bucket import S3Bucket
 
@@ -22,12 +22,12 @@ s = S3Bucket(bucket_name,
 print s  
 #<S3Bucket ... at 'https://s3.amazonaws.com/...'>
 ```
-#创建bucket:
+###创建bucket:
 ```python
 s = S3Bucket('bucket_name',access_key=access_key,secret_key=secret_key)
 s.put_bucket()
 ```
-#删除bucket:
+###删除bucket:
 ```python
 s = S3Bucket('as1111dasdasdasd',access_key=access_key,secret_key=secret_key)
 s.delete_bucket()
