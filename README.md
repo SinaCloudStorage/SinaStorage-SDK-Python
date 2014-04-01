@@ -9,25 +9,42 @@
 要求**Python 2.5+** ，不支持Python 3。
 完全由Python标准库开发。
 
-##Usage
+##快速上手
 
-Access to a bucket is done via the S3Bucket class. It has three required arguments:
-
+#利用S3Bucket类对bucket进行访问。需要的参数有：
 ```python
-from simples3.bucket import S3Bucket
+from sinastorage.bucket import S3Bucket
 
-s = S3Bucket(bucket,
+s = S3Bucket(bucket_name,
              access_key=access_key,
              secret_key=secret_key)
  
 print s  
 #<S3Bucket ... at 'https://s3.amazonaws.com/...'>
 ```
-To add a file, simply do
+#创建bucket:
+```python
+s = S3Bucket('bucket_name',access_key=access_key,secret_key=secret_key)
+s.put_bucket()
+```
+#删除bucket:
+```python
+s = S3Bucket('as1111dasdasdasd',access_key=access_key,secret_key=secret_key)
+s.delete_bucket()
+```
+
+
+
+
+
+
+
+
+上传文件：
 ```python
 s.put("my file", "my content")
 ```
-To retrieve a file do 
+下载文件：
 ```python
 f = s.get("my file")
 print f.read()
