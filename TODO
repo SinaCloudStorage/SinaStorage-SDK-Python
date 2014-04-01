@@ -1,0 +1,3 @@
+* Django file storage adapter, which has already been written. Unpublished
+  because it's not very nice, and I don't really use Django.
+* Command-line interface á la FTP.
