@@ -1,30 +1,13 @@
-#simples3
+#Sina storage SDK
 
-##Overview
-A fairly simple, decently quick interface to Amazon's S3 storage service.
+##概述
+新浪云存储 Python平台SDK为第三方应用提供了简单易用的API调用服务，使第三方客户端无需了解复杂的验证机制即可进行授权、上传、下载等文件操作。
+>本文档详细内容请查阅：[SinaStorage’s documentation][1]
 
-It grew out of frustration with other libraries that were either written too
-pragmatically (slow), too bloatedly, or just half-done.
+##SDK 环境要求
 
-The module aims for:
-
- * simplicity,
- * decent speed,
- * non-intrusiveness.
-
-It really is designed to fit into programmer memory. The three basic operations
-are as easy as with dictionaries.
-
-##Dependencies
-
-Requires **Python 2.5+** and **nose** for running tests. Python 3 support is not yet available. Apart from that, the code relies solely on Python
-standard libraries.
-
-##Installation
-
-```sh
-pip install simples3
-```
+要求**Python 2.5+** ，不支持Python 3。
+完全由Python标准库开发。
 
 ##Usage
 
@@ -69,3 +52,6 @@ For more detailed documentation, refer [here](http://sendapatch.se/projects/simp
 
 ###IRC
 ``#sendapatch`` on ``chat.freenode.net``.
+
+
+[1]:http://sinastorage.sinaapp.com/developer/index.html
