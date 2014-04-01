@@ -83,7 +83,7 @@ print f.s3_info.keys()
 CHUNK = 16 * 1024
 with open('dage1.txt', 'wb') as fp:
     while True:
-        chunk = response.read(CHUNK)
+        chunk = f.read(CHUNK)
         if not chunk: break
         fp.write(chunk)
 ```
@@ -95,8 +95,13 @@ del s["my file!"]
 *获取文件信息:
 ```python
 s = S3Bucket(bucket_name,access_key=access_key,secret_key=secret_key)
-print s.info('testpdf.pdf')
-#
+info = s.info('testpdf.pdf')
+print info['mimetype']
+#application/pdf
+print info['size']
+#2433230
+print info
+#{'mimetype': 'application/pdf', 'modify': datetime.datetime(2014, 4, 1, 6, 58, 58), 'headers': {'content-length': '2433230', ...}, 'date': datetime.datetime(2014, 4, 1, 9, 14, 57), 'metadata': {'crc32': 'DDEF42FA', ...}, 'size': 2433230}
 ```
 *修改文件meta信息:
 ```python
@@ -107,7 +112,7 @@ s.update_meta('testpdf.pdf', {'aaa':'bbbb','dage':'sbsb'})
 ```python
 s = S3Bucket(bucket_name,access_key=access_key,secret_key=secret_key)
 print s.acl_info('testpdf.pdf')
-#
+#{u'Owner': u'SINA000000...', u'ACL': {u'GRPS000000ANONYMOUSE': [u'read'], u'GRPS0000000CANONICAL': [u'read_acp', u'write_acp']}}
 ```
 *修改文件acl信息:
 ```python
@@ -123,12 +128,12 @@ s.update_acl('testpdf.pdf', acl)
 *无签名信息URL:
 ```python
 s = S3Bucket(bucket_name,access_key=access_key,secret_key=secret_key)
-return s.make_url('testpdf.pdf')
+print s.make_url('testpdf.pdf')
 ```
 *含签名信息URL:
 ```python
 s = S3Bucket(bucket_name,access_key=access_key,secret_key=secret_key)
-return s.make_url_authed('testpdf.pdf')
+print s.make_url_authed('testpdf.pdf')
 ```
 
 For more detailed documentation, refer [here](http://sinastorage.sinaapp.com/developer/index.html)
