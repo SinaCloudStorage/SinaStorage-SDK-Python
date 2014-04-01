@@ -15,6 +15,7 @@ from urllib import quote_plus
 from base64 import b64encode
 import mmap
 import json
+import sinastorage
 
 from sinastorage.utils import (_amz_canonicalize, metadata_headers, metadata_remove_headers, 
                     rfc822_fmtdate, aws_md5, aws_urlquote, guess_mimetype, 
@@ -284,8 +285,7 @@ class S3Bucket(object):
     default_encoding = "utf-8"
     n_retries = 10
 
-    def __init__(self, name=None, access_key=None, secret_key=None,
-                 base_url=None, timeout=None, secure=False):
+    def __init__(self, name=None, base_url=None, timeout=None, secure=False):
         scheme = ("http", "https")[int(bool(secure))]
         if not base_url:
             base_url = "%s://%s" % (scheme, sinastorage_domain)
@@ -297,8 +297,8 @@ class S3Bucket(object):
                                  % (secure, scheme))
         self.opener = self.build_opener()
         self.name = name
-        self.access_key = access_key
-        self.secret_key = secret_key
+        self.access_key = sinastorage.getDefaultAppInfo().access_key
+        self.secret_key = sinastorage.getDefaultAppInfo().secret_key
         self.base_url = base_url
         self.timeout = timeout
 
