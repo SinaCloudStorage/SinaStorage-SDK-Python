@@ -61,7 +61,7 @@ f.close()
 *秒传文件:
 ```python
 s = SCSBucket('bucket的名称')
-s.put_relax('文件上传路径', '被秒传文件的sina_sha1值, 被秒传文件的文件长度s_sina_length')
+s.put_relax('文件上传路径', '被秒传文件的sina_sha1值', 被秒传文件的文件长度s_sina_length)
 ```
 *复制文件:
 ```python
