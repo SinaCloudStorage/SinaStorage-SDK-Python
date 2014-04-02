@@ -1,8 +1,8 @@
-"""Streaming with :mod:`simples3` via :mod:`poster.streaminghttp`
+"""Streaming with :mod:`sinastorage` via :mod:`poster.streaminghttp`
 
 Usage::
 
-    >>> bucket = StreamingS3Bucket("foo.com")
+    >>> bucket = StreamingSCSBucket("foo.com")
     >>> bucket.put_file("huge_cd.iso", "foo/huge_cd.iso", acl="public-read")
     >>> with open("foo/huge_cd.iso", "rb") as fp:
     ...     bucket.put_file("memdump.bin", fp)
@@ -10,7 +10,7 @@ Usage::
 
 import os
 import urllib2
-from sinastorage.bucket import S3Bucket
+from sinastorage.bucket import SCSBucket
 
 class ProgressCallingFile(object):
     __slots__ = ("fp", "pos", "size", "progress")
@@ -33,7 +33,7 @@ class ProgressCallingFile(object):
 class StreamingMixin(object):
     def put_file(self, key, fp, acl=None, metadata={}, progress=None,
                  size=None, mimetype=None, transformer=None, headers={}):
-        """Put file-like object or filename *fp* on S3 as *key*.
+        """Put file-like object or filename *fp* on SCS as *key*.
 
         *fp* must have a read method that takes a buffer size, and must behave
         correctly with regards to seeking and telling.
@@ -94,7 +94,7 @@ else:
 
     default_stream_mixin = PosterStreamingMixin
 
-class StreamingS3Bucket(default_stream_mixin, S3Bucket): pass
+class StreamingSCSBucket(default_stream_mixin, SCSBucket): pass
 
 if __name__ == "__main__":
     import doctest

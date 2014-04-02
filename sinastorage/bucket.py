@@ -34,7 +34,7 @@ class ACL(object):
     ACL_READ                = 'read'
     ACL_READ_ACP            = 'read_acp'
 
-class S3Error(Exception):
+class SCSError(Exception):
     fp = None
 
     def __init__(self, message, **kwds):
@@ -60,7 +60,7 @@ class S3Error(Exception):
         self.fp = getattr(e, "fp", None)
         if self.fp:
             # The except clause is to avoid a bug in urllib2 which has it read
-            # as in chunked mode, but S3 gives an empty reply.
+            # as in chunked mode, but SCS gives an empty reply.
             try:
                 self.data = data = self.fp.read()
             except (httplib.HTTPException, urllib2.URLError), e:
@@ -75,11 +75,11 @@ class S3Error(Exception):
     @property
     def code(self): return self.extra.get("code")
 
-class KeyNotFound(S3Error, KeyError):
+class KeyNotFound(SCSError, KeyError):
     @property
     def key(self): return self.extra.get("key")
     
-class BadRequest(S3Error, KeyError):
+class BadRequest(SCSError, KeyError):
     @property
     def key(self): return self.extra.get("key")
 
@@ -97,7 +97,7 @@ class AnyMethodRequest(urllib2.Request):
     def get_method(self):
         return self.method
 
-class S3Request(object):
+class SCSRequest(object):
     urllib_request_cls = AnyMethodRequest
     subresource_need_to_sign = ('acl', 'location', 'torrent', 'website', 'logging', 'relax', 'meta', 'uploads', 'part', 'copy')
     subresource_kv_need_to_sign = ('uploadId', 'ip', 'partNumber')
@@ -123,7 +123,7 @@ class S3Request(object):
         self.subresource = subresource
 
     def __str__(self):
-        return "<S3 %s request bucket %r key %r>" % (self.method, self.bucket, self.key)
+        return "<SCS %s request bucket %r key %r>" % (self.method, self.bucket, self.key)
 
     def descriptor(self):
         lines = (self.method,
@@ -204,9 +204,9 @@ class S3Request(object):
             url += "?" + "&".join(ps)
         return url
 
-class S3File(str):
+class SCSFile(str):
     def __new__(cls, value, **kwds):
-        return super(S3File, cls).__new__(cls, value)
+        return super(SCSFile, cls).__new__(cls, value)
 
     def __init__(self, value, **kwds):
         kwds["data"] = value
@@ -215,8 +215,8 @@ class S3File(str):
     def put_into(self, bucket, key):
         return bucket.put(key, **self.kwds)
 
-class S3Listing(object):
-    """Representation of a single pageful of S3 bucket listing data."""
+class SCSListing(object):
+    """Representation of a single pageful of SCS bucket listing data."""
 
     truncated = None
 
@@ -281,7 +281,7 @@ class S3Listing(object):
             isPrefix=False
             return (name, isPrefix, sha1, expiration_time, modify, owner, md5, content_type, size)
 
-class S3Bucket(object):
+class SCSBucket(object):
     default_encoding = "utf-8"
     n_retries = 10
 
@@ -338,12 +338,12 @@ class S3Bucket(object):
 
     def request(self, *a, **k):
         k.setdefault("bucket", self.name)
-        return S3Request(*a, **k)
+        return SCSRequest(*a, **k)
 
-    def send(self, s3req):
-        s3req.sign(self)
+    def send(self, scsreq):
+        scsreq.sign(self)
         for retry_no in xrange(self.n_retries):
-            req = s3req.urllib(self)
+            req = scsreq.urllib(self)
             try:
                 if self.timeout:
                     response = self.opener.open(req, timeout=self.timeout)
@@ -352,7 +352,7 @@ class S3Bucket(object):
                 
                 return response
             except (urllib2.HTTPError, urllib2.URLError), e:
-                # If S3 gives HTTP 500, we should try again.
+                # If SCS gives HTTP 500, we should try again.
                 ecode = getattr(e, "code", None)
                 if ecode == 500:
                     print '=======500========'
@@ -362,8 +362,8 @@ class S3Bucket(object):
                 elif ecode == 400:
                     exc_cls = BadRequest
                 else:
-                    exc_cls = S3Error
-                raise exc_cls.from_urllib(e, key=s3req.key)
+                    exc_cls = SCSError
+                raise exc_cls.from_urllib(e, key=scsreq.key)
         else:
             raise RuntimeError("ran out of retries")  # Shouldn't happen.
 
@@ -374,7 +374,7 @@ class S3Bucket(object):
 
     def get(self, key):
         response = self.send(self.request(key=key))
-        response.s3_info = info_dict(dict(response.info()))
+        response.scs_info = info_dict(dict(response.info()))
         return response
 
     def info(self, key):
@@ -402,8 +402,8 @@ class S3Bucket(object):
                 headers["Content-Length"] = str(len(data))
         if "s-sina-sha1" not in headers:
             headers["s-sina-sha1"] = aws_md5(data)
-        s3req = self.request(method="PUT", key=key, data=data, headers=headers)
-        self.send(s3req).close()        
+        scsreq = self.request(method="PUT", key=key, data=data, headers=headers)
+        self.send(scsreq).close()        
         
     
     def put_relax(self,key,sina_sha1, s_sina_length, acl=None, 
@@ -431,8 +431,8 @@ class S3Bucket(object):
         if acl: headers["X-AMZ-ACL"] = acl
         if "Content-Length" not in headers:
             headers["Content-Length"] = 0
-        s3req = self.request(method="PUT", key=key, headers=headers,subresource='relax')
-        self.send(s3req).close()
+        scsreq = self.request(method="PUT", key=key, headers=headers,subresource='relax')
+        self.send(scsreq).close()
         
     def update_meta(self, key, metadata={}, remove_metadata=[], acl=None, 
                     mimetype=None, headers={}):
@@ -450,8 +450,8 @@ class S3Bucket(object):
         if acl: headers["X-AMZ-ACL"] = acl
         if "Content-Length" not in headers:
             headers["Content-Length"] = 0
-        s3req = self.request(method="PUT", key=key, headers=headers, subresource='meta')
-        self.send(s3req).close()   
+        scsreq = self.request(method="PUT", key=key, headers=headers, subresource='meta')
+        self.send(scsreq).close()   
 
     def acl_info(self, key, mimetype=None, headers={}):
         '''
@@ -464,8 +464,8 @@ class S3Bucket(object):
             headers["Content-Type"] = guess_mimetype(key)
         if "Content-Length" not in headers:
             headers["Content-Length"] = 0
-        s3req = self.request(key=key, args={'formatter':'json'}, headers=headers, subresource='acl')
-        response = self.send(s3req)
+        scsreq = self.request(key=key, args={'formatter':'json'}, headers=headers, subresource='acl')
+        response = self.send(scsreq)
         aclResult = json.loads(response.read())
         response.close()
         return aclResult
@@ -498,8 +498,8 @@ class S3Bucket(object):
         aclJson = json.dumps(acl)
         if "Content-Length" not in headers:
             headers["Content-Length"] = str(len(aclJson))
-        s3req = self.request(method="PUT", key=key, data=aclJson, headers=headers, subresource='acl')
-        self.send(s3req).close()
+        scsreq = self.request(method="PUT", key=key, data=aclJson, headers=headers, subresource='acl')
+        self.send(scsreq).close()
 
     def delete(self, key):
         try:
@@ -530,13 +530,13 @@ class S3Bucket(object):
         self.send(self.request(method="PUT", key=key, headers=headers)).close()
 
     def _get_listing(self, args):
-        return S3Listing.parse(self.send(self.request(key='', args=args)))
+        return SCSListing.parse(self.send(self.request(key='', args=args)))
 
     def listdir(self, prefix=None, marker=None, limit=None, delimiter=None):
         """
         List bucket contents.
 
-        return a generator S3Listing
+        return a generator SCSListing
         Yields tuples of (name, isPrefix, sha1, expiration_time, modify, owner, md5, content_type, size).
 
         *prefix*, if given, predicates `key.startswith(prefix)`.
@@ -545,7 +545,7 @@ class S3Bucket(object):
 
         *key* will include the *prefix* if any is given.
 
-        .. note:: This method can make several requests to S3 if the listing is
+        .. note:: This method can make several requests to SCS if the listing is
                   very long.
         """
         m = (("prefix", prefix),
@@ -581,12 +581,12 @@ class S3Bucket(object):
             yield entry
 
     def make_url(self, key, args=None, arg_sep="&"):
-        s3req = self.request(key=key, args=args)
-        return s3req.url(self.base_url, arg_sep=arg_sep)
+        scsreq = self.request(key=key, args=args)
+        return scsreq.url(self.base_url, arg_sep=arg_sep)
 
     def make_url_authed(self, key, expire=datetime.timedelta(minutes=5), 
                         ip=None, cheese=None, fn=None):
-        """Produce an authenticated URL for S3 object *key*.
+        """Produce an authenticated URL for scs object *key*.
 
         *expire* is a delta or a datetime on which the authenticated URL
         expires. It defaults to five minutes, and accepts a timedelta, an
@@ -597,8 +597,8 @@ class S3Bucket(object):
         expire = expire2datetime(expire)
         expire = time.mktime(expire.timetuple()[:9])
         expire = str(int(expire))
-        s3req = self.request(key=key, headers={"Date": expire})
-        sign = s3req.sign(self)
+        scsreq = self.request(key=key, headers={"Date": expire})
+        sign = scsreq.sign(self)
         args_list = {"KID": 'sina,%s'%self.access_key,
                       "Expires": expire,
                       "ssig": sign}
@@ -608,8 +608,8 @@ class S3Bucket(object):
             args_list['cheese'] = cheese
         if fn:
             args_list['fn'] = fn
-        s3req.args = args_list.items()
-        return s3req.url(self.base_url, arg_sep="&")
+        scsreq.args = args_list.items()
+        return scsreq.url(self.base_url, arg_sep="&")
 
     def url_for(self, key, authenticated=False,
                 expire=datetime.timedelta(minutes=5)):
@@ -641,8 +641,8 @@ class S3Bucket(object):
         return self.delete(None)
         
 
-class ReadOnlyS3Bucket(S3Bucket):
-    """Read-only S3 bucket.
+class ReadOnlySCSBucket(SCSBucket):
+    """Read-only SCS bucket.
 
     Mostly useful for situations where urllib2 isn't available (e.g. Google App
     Engine), but you still want the utility functions (like generating

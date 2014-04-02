@@ -2,9 +2,9 @@ from __future__ import absolute_import
 
 __version__ = "1.1.0"
 
-from .bucket import S3File, S3Bucket, S3Error, KeyNotFound
-S3File, S3Bucket, S3Error, KeyNotFound
-__all__ = "S3File", "S3Bucket", "S3Error"
+from .bucket import SCSFile, SCSBucket, SCSError, KeyNotFound
+SCSFile, SCSBucket, SCSError, KeyNotFound
+__all__ = "SCSFile", "SCSBucket", "SCSError"
 
 
 class appinfo(object):
