@@ -297,8 +297,11 @@ class SCSBucket(object):
                                  % (secure, scheme))
         self.opener = self.build_opener()
         self.name = name
+        if sinastorage.getDefaultAppInfo() is None :
+            raise ValueError("access_key and secret_key must not be None! Please set sinastorage.setDefaultAppInfo('access_key', 'secret_key') first!")
         self.access_key = sinastorage.getDefaultAppInfo().access_key
         self.secret_key = sinastorage.getDefaultAppInfo().secret_key
+        
         self.base_url = base_url
         self.timeout = timeout
 
