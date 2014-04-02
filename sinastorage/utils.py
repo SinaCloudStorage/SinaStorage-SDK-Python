@@ -1,6 +1,6 @@
 #-*- coding:UTF-8 -*-
 
-"""Misc. S3-related utilities."""
+"""Misc. SCS-related utilities."""
 
 import time
 import hashlib
@@ -167,19 +167,19 @@ def name(o):
 
     Functions:
     >>> name(name)
-    'simples3.utils.name'
+    'sinastorage.utils.name'
     >>> def my_fun(): pass
     >>> name(my_fun)
-    'simples3.utils.my_fun'
+    'sinastorage.utils.my_fun'
 
     Classes:
     >>> class MyKlass(object): pass
     >>> name(MyKlass)
-    'simples3.utils.MyKlass'
+    'sinastorage.utils.MyKlass'
 
     Instances:
     >>> name(MyKlass())
-    'simples3.utils.MyKlass'
+    'sinastorage.utils.MyKlass'
 
     Types:
     >>> name(str), name(object), name(int)
