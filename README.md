@@ -25,17 +25,17 @@ print s
 获取[access_key,secret_key](http://sinastor.appsina.com/?c=console)
 
 ###2.bucket 操作:
-*创建bucket
+* 创建bucket
 ```python
 s = SCSBucket('需要创建的bucket名称')
 s.put_bucket()
 ```
-*删除bucket:
+* 删除bucket:
 ```python
 s = SCSBucket('需要删除的bucket名称')
 s.delete_bucket()
 ```
-*列出所有bucket:
+* 列出所有bucket:
 ```python
 s = SCSBucket()							#此处不要填写任何bucket名称
 buckets_generator = s.list_buckets()	#返回generator，直接迭代即可
@@ -46,7 +46,7 @@ for bucket in buckets_generator:
 ```
 
 ###3.object 操作:
-*上传文件/内容:
+* 上传文件/内容:
 ```python
 #文件内容
 s = SCSBucket('bucket的名称')
@@ -58,18 +58,18 @@ f = open("本地文件路径",'rb')
 s.put("文件上传路径",f)
 f.close()
 ```
-*秒传文件:
+* 秒传文件:
 ```python
 s = SCSBucket('bucket的名称')
 s.put_relax('文件上传路径', '被秒传文件的sina_sha1值', 被秒传文件的文件长度s_sina_length)
 ```
-*复制文件:
+* 复制文件:
 ```python
 s = SCSBucket('bucket的名称')
 #注意：source    必须从bucket开始，如：'/bucketname/file.txt'
 s.copy(source='/源文件bucket名称/源文件uri地址', key='文件上传路径')
 ```
-*列文件目录:
+* 列文件目录:
 ```python
 s = SCSBucket('bucket的名称')
 #返回generator对象
@@ -95,7 +95,7 @@ for item in files_generator:
 
 #(name, isPrefix, sha1, expiration_time, modify, owner, md5, content_type, size)
 ```
-*下载文件:
+* 下载文件:
 ```python
 s = SCSBucket('bucket的名称')
 f = s['需要下载的文件路径']
@@ -115,12 +115,12 @@ with open('本地目标文件地址', 'wb') as fp:
         if not chunk: break
         fp.write(chunk)
 ```
-*删除文件:
+* 删除文件:
 ```python
 s = SCSBucket('bucket的名称')
 del s["需要删除的文件路径"]
 ```
-*获取文件信息:
+* 获取文件信息:
 ```python
 s = SCSBucket('bucket的名称')
 info = s.info('服务器端文件路径')
@@ -131,18 +131,18 @@ print info['size']
 print info
 #{'mimetype': 'application/pdf', 'modify': datetime.datetime(2014, 4, 1, 6, 58, 58), 'headers': {'content-length': '2433230', ...}, 'date': datetime.datetime(2014, 4, 1, 9, 14, 57), 'metadata': {'crc32': 'DDEF42FA', ...}, 'size': 2433230}
 ```
-*修改文件meta信息:
+* 修改文件meta信息:
 ```python
 s = SCSBucket('bucket的名称')
 s.update_meta('服务器端文件路径', {'自定义属性名':'自定义属性值','file_meta_key':'meta_value'})
 ```
-*获取文件acl信息:
+* 获取文件acl信息:
 ```python
 s = SCSBucket('bucket的名称')
 print s.acl_info('服务器端文件路径')
 #{u'Owner': u'SINA000000...', u'ACL': {u'GRPS000000ANONYMOUSE': [u'read'], u'GRPS0000000CANONICAL': [u'read_acp', u'write_acp']}}
 ```
-*修改文件acl信息:
+* 修改文件acl信息:
 ```python
 from sinastorage.bucket import SCSBucket,ACL
 s = SCSBucket('bucket的名称')
@@ -153,12 +153,12 @@ acl[ACL.ACL_GROUP_CANONICAL] = [ACL.ACL_READ_ACP,ACL.ACL_WRITE_ACP]
 s.update_acl('服务器端文件路径', acl)
 ```
 ###3.URL签名工具:
-*无签名信息URL:
+* 无签名信息URL:
 ```python
 s = SCSBucket('bucket的名称')
 print s.make_url('待生成url地址的文件路径')
 ```
-*含签名信息URL:
+* 含签名信息URL:
 ```python
 s = SCSBucket('bucket的名称')
 print s.make_url_authed('待生成url地址的文件路径')
