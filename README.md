@@ -2,7 +2,6 @@
 
 ##概述
 新浪云存储Python平台SDK为第三方应用提供了简单易用的API调用服务，使第三方客户端无需了解复杂的验证机制即可进行授权、上传、下载等文件操作。
->本文档详细内容请查阅：[SinaStorage’s documentation](http://sinastor.appsina.com)
 
 ##SDK 环境要求
 
@@ -11,7 +10,7 @@
 
 ##快速上手
 
-###1.创建bucket访问对象：
+###1. 创建bucket访问对象：
 ```python
 from sinastorage.bucket import SCSBucket
 import sinastorage
@@ -22,9 +21,8 @@ s = SCSBucket('bucket的名称')
 print s  
 #<SCSBucket ... at 'http://sinastorage.com/...'>
 ```
-获取[access_key,secret_key](http://sinastor.appsina.com/?c=console)
 
-###2.bucket 操作:
+###2. bucket 操作:
 * 创建bucket
 ```python
 s = SCSBucket('需要创建的bucket名称')
@@ -45,7 +43,7 @@ for bucket in buckets_generator:
 #(bucketName,creationDate)				#tuple类型
 ```
 
-###3.object 操作:
+###3. object 操作:
 * 上传文件/内容:
 ```python
 #文件内容
@@ -152,7 +150,7 @@ acl[ACL.ACL_GROUP_CANONICAL] = [ACL.ACL_READ_ACP,ACL.ACL_WRITE_ACP]
 
 s.update_acl('服务器端文件路径', acl)
 ```
-###3.URL签名工具:
+###4. URL签名工具:
 * 无签名信息URL:
 ```python
 s = SCSBucket('bucket的名称')
@@ -164,4 +162,3 @@ s = SCSBucket('bucket的名称')
 print s.make_url_authed('待生成url地址的文件路径')
 ```
 
-For more detailed documentation, refer [here](http://sinastor.appsina.com)
