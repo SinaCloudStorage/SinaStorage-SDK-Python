@@ -21,6 +21,8 @@ from sinastorage.utils import (_amz_canonicalize, metadata_headers, metadata_rem
                     rfc822_fmtdate, aws_md5, aws_urlquote, guess_mimetype, 
                     info_dict, expire2datetime, getSize, rfc822_parsedate)
 
+from sinastorage.multipart import *
+
 sinastorage_domain = "sinastorage.com"
 
 class ACL(object):
@@ -97,9 +99,50 @@ class AnyMethodRequest(urllib2.Request):
     def get_method(self):
         return self.method
 
+def _upload_part(bucket_name, key_name, upload_id, part, source_path, offset, 
+                 chunk_bytes, cb, num_cb, amount_of_retries=0, debug=1):
+    from filechunkio import FileChunkIO
+    
+    """
+    Uploads a part with retries.
+    """
+    if debug == 1:
+        print "_upload_part(%s, %s, %s, %s, %s)" % (source_path, offset, bytes, upload_id, part.part_num)
+
+    def _upload(retries_left=amount_of_retries):
+#         try:
+        if debug == 1:
+            print 'Start uploading part #%d ...' % part.part_num
+        
+        bucket = SCSBucket(bucket_name)
+        with FileChunkIO(source_path, 'r', offset=offset,
+                         bytes=chunk_bytes) as fp:
+            
+            print '====len(fp)=======%s'%chunk_bytes
+            
+            headers={"Content-Length":str(chunk_bytes)}
+            
+            headers = bucket.put(key_name, fp, headers=headers, args={'partNumber':'%i'%part.part_num,
+                                                     'uploadId':upload_id})
+            part.etag = headers.getheader('ETag')
+            print '-=-=-=-=-=-_upload=-=-=-=-=-=-part.etag:',part.etag
+            return part
+#         except Exception, exc:
+#             if retries_left:
+#                 return _upload(retries_left=retries_left - 1)
+#             else:
+#                 print 'Failed uploading part #%d' % part.part_num
+#                 print '===========',exc
+#                 raise exc
+#         else:
+#             if debug == 1:
+#                 print '... Uploaded part #%d' % part.part_num
+
+    return _upload()
+
 class SCSRequest(object):
     urllib_request_cls = AnyMethodRequest
-    subresource_need_to_sign = ('acl', 'location', 'torrent', 'website', 'logging', 'relax', 'meta', 'uploads', 'part', 'copy')
+    subresource_need_to_sign = ('acl', 'location', 'torrent', 'website', 'logging', 'relax', 'meta', 'uploads', 'part', 'copy', 'multipart')
     subresource_kv_need_to_sign = ('uploadId', 'ip', 'partNumber')
 
     def __init__(self, bucket=None, key=None, method="GET", headers={},
@@ -151,15 +194,15 @@ class SCSRequest(object):
         if self.args:
             rv = {}
             for key, value in self.args.iteritems():
-                key = key.lower()
+#                 key = key.lower()
                 if key in self.subresource_kv_need_to_sign:
                     rv[key] = value
             
             if len(rv) > 0 :
                 parts = []
                 for key in sorted(rv):
-                    parts.append("%s=%s\n" % (key, rv[key]))
-                res += "%s%s" % ('&' if self.subresource and self.subresource in self.subresource_need_to_sign else '?', "".join(parts))
+                    parts.append("%s=%s" % (key, rv[key]))
+                res += "%s%s" % ('&' if self.subresource and self.subresource in self.subresource_need_to_sign else '?', "&".join(parts))
         return res
 
     def sign(self, cred):
@@ -168,6 +211,8 @@ class SCSRequest(object):
             http://sinastorage.sinaapp.com/developer/interface/aws/auth.html
         '''
         stringToSign = self.descriptor()
+        print stringToSign
+        print '\n---------stringToSign----------'
         key = cred.secret_key.encode("utf-8")
         hasher = hmac.new(key, stringToSign.encode("utf-8"), hashlib.sha1)
         sign = b64encode(hasher.digest())[5:15]     #ssig
@@ -179,10 +224,17 @@ class SCSRequest(object):
         return sign
 
     def urllib(self, bucket):
-        if hasattr(self.data,'fileno'):       #file like
-            data = mmap.mmap(self.data.fileno(), 0, access=mmap.ACCESS_READ)
+        if hasattr(self.data,'offset') and hasattr(self.data,'bytes'):      #filechunkio
+            print '----------33333333==================%d====%d'%(self.data.bytes,self.data.offset)
+            data = self.data#mmap.mmap(fileno=self.data.fileno(), length=self.data.bytes, access=mmap.ACCESS_READ,offset=0)
+#             print '------------=-=-=-=-=-=--==-=--=-',len(data)
+            
+        elif hasattr(self.data,'fileno'):       #file like
+            data = self.data#mmap.mmap(self.data.fileno(), 0, access=mmap.ACCESS_READ)
         else:
             data = self.data
+            
+        print self.headers
         return self.urllib_request_cls(self.method, self.url(bucket.base_url),
                                        data=data, headers=self.headers)
 
@@ -387,7 +439,7 @@ class SCSBucket(object):
         return rv
 
     def put(self, key, data=None, acl=None, metadata={}, mimetype=None,
-            transformer=None, headers={}):
+            transformer=None, headers={},args=None,subresource=None):
         if isinstance(data, unicode):
             data = data.encode(self.default_encoding)
         headers = headers.copy()
@@ -399,15 +451,20 @@ class SCSBucket(object):
         if acl: headers["X-AMZ-ACL"] = acl
         if transformer: data = transformer(headers, data)
         if "Content-Length" not in headers:
-            if isinstance(data, file):
+#             if isinstance(data, file)  isinstance(data, FileChunkIO):
+            if hasattr(data,'fileno'):
                 headers["Content-Length"] = str(getSize(data.name))
             else:
                 headers["Content-Length"] = str(len(data))
         if "s-sina-sha1" not in headers:
             headers["s-sina-sha1"] = aws_md5(data)
-        scsreq = self.request(method="PUT", key=key, data=data, headers=headers)
-        self.send(scsreq).close()        
-        
+        scsreq = self.request(method="PUT", key=key, data=data, headers=headers, 
+                              args=args, subresource=subresource)
+        response = self.send(scsreq)
+        headers = response.info()
+        response.close()
+        return headers
+                
     
     def put_relax(self,key,sina_sha1, s_sina_length, acl=None, 
                   metadata={}, mimetype=None,headers={}):
@@ -642,6 +699,126 @@ class SCSBucket(object):
 
     def delete_bucket(self):
         return self.delete(None)
+        
+        
+    '''
+    multiple upload
+    '''
+    def initiate_multipart_upload(self, key_name, acl=None, metadata={}, mimetype=None,
+            headers={}):
+        ''' 初始化分片上传 
+        
+            return type : dict
+                {
+                    u'UploadId': u'535dd723761d4f14a7210945cd7dea11', 
+                    u'Key': u'test-python.zip', 
+                    u'Bucket': u'create-a-bucket'
+                }
+        '''
+        headers = headers.copy()
+        if mimetype:
+            headers["Content-Type"] = str(mimetype)
+        elif "Content-Type" not in headers:
+            headers["Content-Type"] = guess_mimetype(key_name)
+        headers.update(metadata_headers(metadata))
+        if acl: headers["X-AMZ-ACL"] = acl
+        headers["Content-Length"] = "0"
+        scsreq = self.request(method="POST", key=key_name, headers=headers, subresource='multipart')
+        response = self.send(scsreq)
+        initMultipartUploadResult = json.loads(response.read())
+        response.close()
+        multipart = MultipartUpload(self)
+        multipart.upload_id = initMultipartUploadResult["UploadId"]
+        multipart.bucket_name = initMultipartUploadResult["Bucket"]
+        multipart.key_name = initMultipartUploadResult["Key"]
+        return multipart
+    
+    def complete_multipart_upload(self, multipart):
+        
+        jsonArray = []
+        for part in multipart.parts:
+            jsonDict = {}
+            jsonDict['PartNumber']=part.part_num
+            jsonDict['ETag']=part.etag
+            jsonArray.append(jsonDict)
+        
+        data = json.dumps(jsonArray)
+        
+        headers = {}
+        headers["Content-Type"] = guess_mimetype(multipart.key_name)
+        headers["Content-Length"] = str(len(data))
+        if "s-sina-sha1" not in headers:
+            headers["s-sina-sha1"] = aws_md5(data)
+        
+        scsreq = self.request(method="POST", data=data, headers=headers, key=multipart.key_name, args={'uploadId':multipart.upload_id})
+        response = self.send(scsreq)
+        response.close()
+        
+    def multipart_upload(self, key_name, source_path, acl=None, metadata={}, mimetype=None,
+            headers={}, cb=None, num_cb=None):
+        try:
+            # multipart portions copyright Fabian Topfstedt
+            # https://pypi.python.org/pypi/filechunkio/1.5
+        
+            import math
+            import mimetypes
+            from multiprocessing import Pool
+            from filechunkio import FileChunkIO
+            multipart_capable = True
+            parallel_processes = 4
+            min_bytes_per_chunk = 5 * 1024 * 1024                     #每片分片最大文件大小
+            usage_flag_multipart_capable = """ [--multipart]"""
+            usage_string_multipart_capable = """
+                multipart - Upload files as multiple parts. This needs filechunkio.
+                            Requires ListBucket, ListMultipartUploadParts,
+                            ListBucketMultipartUploads and PutObject permissions."""
+        except ImportError as err:
+            multipart_capable = False
+            usage_flag_multipart_capable = ""
+            usage_string_multipart_capable = '\n\n     "' + \
+                err.message[len('No module named '):] + \
+                '" is missing for multipart support '
+            
+            raise err
+            
+        """
+        Parallel multipart upload.
+        """
+        multipart = self.initiate_multipart_upload(key_name, acl, metadata, mimetype, headers)
+        source_size = getSize(source_path)
+        print '=================source_size======%i'%source_size
+        bytes_per_chunk = max(int(math.sqrt(min_bytes_per_chunk) * math.sqrt(source_size)),
+                              min_bytes_per_chunk)
+        print '=================bytes_per_chunk======%i'%bytes_per_chunk
+        chunk_amount = int(math.ceil(source_size / float(bytes_per_chunk)))
+        print '=================chunk_amount======%i'%chunk_amount
+        multipart.bytes_per_part = bytes_per_chunk
+        multipart.parts_amount = chunk_amount
+        
+        pool = Pool(processes=parallel_processes)
+        i = 0
+        for part in multipart.get_next_part():
+            offset = i * bytes_per_chunk
+            remaining_bytes = source_size - offset
+            chunk_bytes = min([bytes_per_chunk, remaining_bytes])
+
+            pool.apply_async(_upload_part, [self.name, key_name, multipart.upload_id, part, source_path, offset, chunk_bytes,
+                                            cb, num_cb], callback = lambda part : multipart.parts.append(part))
+#             _upload_part(self.name, key_name, multipart.upload_id, part, source_path, offset, chunk_bytes,
+#                                             cb, num_cb)
+            i = i + 1
+            
+        pool.close()
+        pool.join()
+    
+        if len(multipart.parts) == chunk_amount:
+            self.complete_multipart_upload(multipart)
+#             multipart.complete_upload()
+#             key = bucket.get_key(keyname)
+#             key.set_acl(acl)
+        else:
+#             mp.cancel_upload()
+            raise RuntimeError("multipart upload is failed!!")
         
 
 class ReadOnlySCSBucket(SCSBucket):
