@@ -208,5 +208,5 @@ def name(o):
     return rv
 
 def getSize(filename):
-    st = os.stat(filename)
+    st = os.stat(filename)#.st_size
     return st.st_size
