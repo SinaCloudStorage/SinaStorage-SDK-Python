@@ -150,6 +150,24 @@ acl[ACL.ACL_GROUP_CANONICAL] = [ACL.ACL_READ_ACP,ACL.ACL_WRITE_ACP]
 
 s.update_acl('服务器端文件路径', acl)
 ```
+
+* 分片上传:
+
+```python
+from sinastorage.bucket import SCSBucket,ACL
+s = SCSBucket('bucket的名称')
+s.multipart_upload('服务器端文件路径', '本地文件路径')
+```
+
+* 列出已经上传的所有分块:
+
+```python
+from sinastorage.bucket import SCSBucket,ACL
+s = SCSBucket('bucket的名称')
+print s.list_parts('upload_id', '服务器端文件路径')
+```
+
+
 ###4. URL签名工具:
 * 无签名信息URL:
 ```python
