@@ -13,7 +13,6 @@ import warnings
 from contextlib import contextmanager
 from urllib import quote_plus
 from base64 import b64encode
-import mmap
 import json
 import sinastorage
 
@@ -21,7 +20,7 @@ from sinastorage.utils import (_amz_canonicalize, metadata_headers, metadata_rem
                     rfc822_fmtdate, aws_md5, aws_urlquote, guess_mimetype, 
                     info_dict, expire2datetime, getSize, rfc822_parsedate)
 
-from sinastorage.multipart import *
+from sinastorage.multipart import MultipartUpload,Part
 
 sinastorage_domain = "sinastorage.com"
 
@@ -110,33 +109,27 @@ def _upload_part(bucket_name, key_name, upload_id, part, source_path, offset,
         print "_upload_part(%s, %s, %s, %s, %s)" % (source_path, offset, bytes, upload_id, part.part_num)
 
     def _upload(retries_left=amount_of_retries):
-#         try:
-        if debug == 1:
-            print 'Start uploading part #%d ...' % part.part_num
-        
-        bucket = SCSBucket(bucket_name)
-        with FileChunkIO(source_path, 'r', offset=offset,
-                         bytes=chunk_bytes) as fp:
+        try:
+            if debug == 1:
+                print 'Start uploading part #%d ...' % part.part_num
             
-            print '====len(fp)=======%s'%chunk_bytes
-            
-            headers={"Content-Length":str(chunk_bytes)}
-            
-            headers = bucket.put(key_name, fp, headers=headers, args={'partNumber':'%i'%part.part_num,
-                                                     'uploadId':upload_id})
-            part.etag = headers.getheader('ETag')
-            print '-=-=-=-=-=-_upload=-=-=-=-=-=-part.etag:',part.etag
-            return part
-#         except Exception, exc:
-#             if retries_left:
-#                 return _upload(retries_left=retries_left - 1)
-#             else:
-#                 print 'Failed uploading part #%d' % part.part_num
-#                 print '===========',exc
-#                 raise exc
-#         else:
-#             if debug == 1:
-#                 print '... Uploaded part #%d' % part.part_num
+            bucket = SCSBucket(bucket_name)
+            with FileChunkIO(source_path, 'r', offset=offset,
+                             bytes=chunk_bytes) as fp:
+                headers={"Content-Length":str(chunk_bytes)}
+                headers = bucket.put(key_name, fp, headers=headers, args={'partNumber':'%i'%part.part_num,
+                                                         'uploadId':upload_id})
+                part.etag = headers.getheader('ETag')
+                return part
+        except Exception, exc:
+            if retries_left:
+                return _upload(retries_left=retries_left - 1)
+            else:
+                print 'Failed uploading part #%d' % part.part_num
+                raise exc
+        else:
+            if debug == 1:
+                print '... Uploaded part #%d' % part.part_num
 
     return _upload()
 
@@ -212,7 +205,6 @@ class SCSRequest(object):
         '''
         stringToSign = self.descriptor()
         print stringToSign
-        print '\n---------stringToSign----------'
         key = cred.secret_key.encode("utf-8")
         hasher = hmac.new(key, stringToSign.encode("utf-8"), hashlib.sha1)
         sign = b64encode(hasher.digest())[5:15]     #ssig
@@ -225,12 +217,9 @@ class SCSRequest(object):
 
     def urllib(self, bucket):
         if hasattr(self.data,'offset') and hasattr(self.data,'bytes'):      #filechunkio
-            print '----------33333333==================%d====%d'%(self.data.bytes,self.data.offset)
-            data = self.data#mmap.mmap(fileno=self.data.fileno(), length=self.data.bytes, access=mmap.ACCESS_READ,offset=0)
-#             print '------------=-=-=-=-=-=--==-=--=-',len(data)
-            
-        elif hasattr(self.data,'fileno'):       #file like
-            data = self.data#mmap.mmap(self.data.fileno(), 0, access=mmap.ACCESS_READ)
+            data = self.data
+        elif hasattr(self.data,'fileno'):                                   #file like
+            data = self.data
         else:
             data = self.data
             
@@ -754,6 +743,20 @@ class SCSBucket(object):
         response = self.send(scsreq)
         response.close()
         
+    
+    def list_parts(self,upload_id,key_name):
+        ''' 列出已经上传的所有分块 '''
+        headers = {}
+        headers["Content-Type"] = 'text/xml'
+        headers["Content-Length"] = 0
+        
+        scsreq = self.request(method="GET", headers=headers, key=key_name, args={'uploadId':upload_id})
+        response = self.send(scsreq)
+        parts = json.loads(response.read())
+        response.close()
+        return parts
+    
+        
     def multipart_upload(self, key_name, source_path, acl=None, metadata={}, mimetype=None,
             headers={}, cb=None, num_cb=None):
         try:
@@ -786,12 +789,9 @@ class SCSBucket(object):
         """
         multipart = self.initiate_multipart_upload(key_name, acl, metadata, mimetype, headers)
         source_size = getSize(source_path)
-        print '=================source_size======%i'%source_size
         bytes_per_chunk = max(int(math.sqrt(min_bytes_per_chunk) * math.sqrt(source_size)),
                               min_bytes_per_chunk)
-        print '=================bytes_per_chunk======%i'%bytes_per_chunk
         chunk_amount = int(math.ceil(source_size / float(bytes_per_chunk)))
-        print '=================chunk_amount======%i'%chunk_amount
         multipart.bytes_per_part = bytes_per_chunk
         multipart.parts_amount = chunk_amount
         
