@@ -17,7 +17,7 @@ import sinastorage
 
 #设置access_key,secret_key
 sinastorage.setDefaultAppInfo('你的accesskey', '你的secretkey')
-s = SCSBucket('bucket的名称')
+s = SCSBucket('bucket的名称',secure=False)	# secure=True 采用https访问方式
 print s  
 #<SCSBucket ... at 'http://sinastorage.com/...'>
 ```
