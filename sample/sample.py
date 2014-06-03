@@ -13,7 +13,11 @@ sys.path.insert(0, (os.path.join(os.path.dirname(__file__),"..")))
 import sinastorage
 from sinastorage.bucket import SCSBucket,ACL, SCSError, KeyNotFound, BadRequest
 
+<<<<<<< HEAD
 sinastorage.setDefaultAppInfo('accessKey', 'secretKey')
+=======
+sinastorage.setDefaultAppInfo('accesskey', 'secretkey')
+>>>>>>> 23510f5a09ce5379825ccbcb8968e5895ff04c5e
 
 def put_file():
     s = SCSBucket('create-a-bucket11')
@@ -51,11 +55,14 @@ def list_bucket():
     buckets_generator = s.list_buckets()
     for bucket in buckets_generator:
         print bucket
+<<<<<<< HEAD
         
 def get_bucket_meta():
     s = SCSBucket('test11')
     metaDict = s.meta()
     print metaDict
+=======
+>>>>>>> 23510f5a09ce5379825ccbcb8968e5895ff04c5e
 
 def get_file():
     s = SCSBucket('test11')
@@ -78,11 +85,14 @@ def copy_file():
     """
     s.copy('/asdasdasdasd/aaa撒旦法第三方a.txt', 'aaaa.txt')
 
+<<<<<<< HEAD
 def get_file_meta():
     s = SCSBucket('test11')
     metaDict = s.meta('testpdf.pdf')
     print metaDict
 
+=======
+>>>>>>> 23510f5a09ce5379825ccbcb8968e5895ff04c5e
 def delete_file():
     s = SCSBucket('test11')
     s.delete('dage/dage1.txt')
@@ -152,13 +162,19 @@ if __name__ == '__main__':
 #         list_bucket()
 #         remove_bucket()
 #         list_bucket_files()
+<<<<<<< HEAD
 #         get_bucket_meta()
+=======
+>>>>>>> 23510f5a09ce5379825ccbcb8968e5895ff04c5e
 #         put_file()
 #         upload_file()
 #         put_file_relax()
 #         get_file()
 #         copy_file()
+<<<<<<< HEAD
         get_file_meta()
+=======
+>>>>>>> 23510f5a09ce5379825ccbcb8968e5895ff04c5e
 #         delete_file()
 #         info_file()
 #         update_file_meta()
@@ -168,7 +184,11 @@ if __name__ == '__main__':
 #         print make_url_authed()
 
 #         multipartUpload()
+<<<<<<< HEAD
 #         listAllPart()
+=======
+        listAllPart()
+>>>>>>> 23510f5a09ce5379825ccbcb8968e5895ff04c5e
 
     except KeyNotFound ,e:
         #请求的key不存在
