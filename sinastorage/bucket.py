@@ -426,15 +426,12 @@ class SCSBucket(object):
         rv = info_dict(dict(response.info()))
         response.close()
         return rv
-<<<<<<< HEAD
     
     def meta(self, key=None):
         response = self.send(self.request(method="GET", key=key, subresource='meta'))
         metaResult = json.loads(response.read())
         response.close()
         return metaResult
-=======
->>>>>>> 23510f5a09ce5379825ccbcb8968e5895ff04c5e
 
     def put(self, key, data=None, acl=None, metadata={}, mimetype=None,
             transformer=None, headers={},args=None,subresource=None):
