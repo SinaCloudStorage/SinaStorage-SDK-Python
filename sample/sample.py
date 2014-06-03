@@ -13,7 +13,7 @@ sys.path.insert(0, (os.path.join(os.path.dirname(__file__),"..")))
 import sinastorage
 from sinastorage.bucket import SCSBucket,ACL, SCSError, KeyNotFound, BadRequest
 
-sinastorage.setDefaultAppInfo('accesskey', 'secretkey')
+sinastorage.setDefaultAppInfo('accessKey', 'secretKey')
 
 def put_file():
     s = SCSBucket('create-a-bucket11')
@@ -51,6 +51,11 @@ def list_bucket():
     buckets_generator = s.list_buckets()
     for bucket in buckets_generator:
         print bucket
+        
+def get_bucket_meta():
+    s = SCSBucket('test11')
+    metaDict = s.meta()
+    print metaDict
 
 def get_file():
     s = SCSBucket('test11')
@@ -72,6 +77,11 @@ def copy_file():
         source    必须从bucket开始，如：'/cloud0/aaa.txt'
     """
     s.copy('/asdasdasdasd/aaa撒旦法第三方a.txt', 'aaaa.txt')
+
+def get_file_meta():
+    s = SCSBucket('test11')
+    metaDict = s.meta('testpdf.pdf')
+    print metaDict
 
 def delete_file():
     s = SCSBucket('test11')
@@ -142,11 +152,13 @@ if __name__ == '__main__':
 #         list_bucket()
 #         remove_bucket()
 #         list_bucket_files()
+#         get_bucket_meta()
 #         put_file()
 #         upload_file()
 #         put_file_relax()
 #         get_file()
 #         copy_file()
+        get_file_meta()
 #         delete_file()
 #         info_file()
 #         update_file_meta()
@@ -156,7 +168,7 @@ if __name__ == '__main__':
 #         print make_url_authed()
 
 #         multipartUpload()
-        listAllPart()
+#         listAllPart()
 
     except KeyNotFound ,e:
         #请求的key不存在
