@@ -13,12 +13,12 @@ sys.path.insert(0, (os.path.join(os.path.dirname(__file__),"..")))
 import sinastorage
 from sinastorage.bucket import SCSBucket,ACL, SCSError, KeyNotFound, BadRequest
 
-sinastorage.setDefaultAppInfo('accesskey', 'secretkey')
+sinastorage.setDefaultAppInfo('accessKey', 'accessSecret')
 
 def put_file():
     s = SCSBucket('create-a-bucket11')
 #     print s.put('sss.txt',u'测试测试testtest')
-    print s.put('sss.txt',file('/Users/hanchao/Desktop/QQ_V3.1.1.dmg'))
+    print s.putFile('sample.py', '/Users/hanchao/Desktop/sample.py')
 
 def put_file_relax():
     s = SCSBucket('test11')
@@ -58,10 +58,10 @@ def get_bucket_meta():
     print metaDict
 
 def get_file():
-    s = SCSBucket('test11')
+    s = SCSBucket('asdasdasdasd')
 #     response = s.get('dage1.txt')
-    response = s['dage/dage1.txt']
-    print response.scs_info
+    response = s['a/asdf/新建 文本文档.txt']
+#     print response.scs_info
     CHUNK = 16 * 1024
     with open('111', 'wb') as fp:
         while True:
@@ -71,12 +71,12 @@ def get_file():
     
     
 def copy_file():
-    s = SCSBucket('test11')
+    s = SCSBucket('asdasdasdasd')
     """
         注意：
         source    必须从bucket开始，如：'/cloud0/aaa.txt'
     """
-    s.copy('/asdasdasdasd/aaa撒旦法第三方a.txt', 'aaaa.txt')
+    s.copy('/asdasdasdasd/aaaa.txt', 'aaaa22111.txt')
 
 def get_file_meta():
     s = SCSBucket('test11')
@@ -85,19 +85,18 @@ def get_file_meta():
 
 def delete_file():
     s = SCSBucket('test11')
-    s.delete('dage/dage1.txt')
+    s.delete('testpdf.pdf')
     
 def info_file():
     s = SCSBucket('test11')
-    info = s.info('testpdf.pdf')
+    info = s.info('sss.txt')
     print info['mimetype']
     print info['size']
     print info
 
 def update_file_meta():
     s = SCSBucket('test11')
-    s.update_meta('testpdf.pdf', {'aaa':'bbbb','dage':'sbsb'})
-#     s.update_meta('testpdf.pdf', remove_metadata=['aaa'])
+    s.update_meta('sss.txt', {'aaa':'bbbb','dage':'sbsb'})
     
 def make_url():
     s = SCSBucket('test11')
@@ -109,7 +108,7 @@ def make_url_authed():
 
 def file_acl_info():
     s = SCSBucket('test11')
-    acl = s.acl_info('testpdf.pdf')
+    acl = s.acl_info('sss.txt')
     print acl
 
 def update_file_acl():
@@ -118,20 +117,14 @@ def update_file_acl():
     acl[ACL.ACL_GROUP_ANONYMOUSE] = [ACL.ACL_READ]
     acl[ACL.ACL_GROUP_CANONICAL] = [ACL.ACL_READ_ACP,ACL.ACL_WRITE_ACP]
     
-    s.update_acl('testpdf.pdf', acl)
-    
-def upload_file():
-    s = SCSBucket('test11')
-    f = open("/Users/hanchao/Desktop/Android.NDK.Beginner's.Guide.pdf",'rb')
-    s.put("11111Android.NDK.Beginner's.Guide.pdf",f)
-    f.close()
+    s.update_acl('sss.txt', acl)
     
 def create_bucket():
-    s = SCSBucket('as1111dasdasdasd')
+    s = SCSBucket('222dasdasdasd')
     s.put_bucket()
     
 def remove_bucket():
-    s = SCSBucket('as1111dasdasdasd')
+    s = SCSBucket('222dasdasdasd')
     s.delete_bucket()
 
 ''' 分片上传 '''
@@ -139,7 +132,7 @@ def multipartUpload():
     s = SCSBucket('create-a-bucket11')
 #     initMultipartUploadResult = s.initiateMultipartUpload('test-python.zip');
 #     print initMultipartUploadResult
-    s.multipart_upload('Numbers51.dmg', '/Users/hanchao/Desktop/Numbers51.dmg')
+    s.multipart_upload('qt-opensource-mac-4.8.6.dmg', '/Users/hanchao/Desktop/qt-opensource-mac-4.8.6.dmg')
     
 def listAllPart():
     s = SCSBucket('create-a-bucket11')
@@ -148,17 +141,16 @@ def listAllPart():
     
 if __name__ == '__main__':
     try:
-#         create_bucket()
+        create_bucket()
 #         list_bucket()
 #         remove_bucket()
 #         list_bucket_files()
 #         get_bucket_meta()
 #         put_file()
-#         upload_file()
 #         put_file_relax()
 #         get_file()
 #         copy_file()
-        get_file_meta()
+#         get_file_meta()
 #         delete_file()
 #         info_file()
 #         update_file_meta()

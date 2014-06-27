@@ -18,7 +18,7 @@ import sinastorage
 
 from sinastorage.utils import (_amz_canonicalize, metadata_headers, metadata_remove_headers, 
                     rfc822_fmtdate, aws_md5, aws_urlquote, guess_mimetype, 
-                    info_dict, expire2datetime, getSize, rfc822_parsedate)
+                    info_dict, expire2datetime, getSize, rfc822_parsedate, FileWithCallback)
 
 from sinastorage.multipart import MultipartUpload,Part
 
@@ -41,6 +41,8 @@ class SCSError(Exception):
     def __init__(self, message, **kwds):
         self.args = message, kwds.copy()
         self.msg, self.extra = self.args
+        self.urllib2Response = None
+        self.urllib2Request = None
 
     def __str__(self):
         rv = self.msg
@@ -53,8 +55,10 @@ class SCSError(Exception):
     @classmethod
     def from_urllib(cls, e, **extra):
         self = cls("HTTP error", **extra)
+        self.urllib2Response = e
         self.hdrs = e.hdrs
         self.url = e.url
+        self.urllib2Request = self.extra['req']
         for attr in ("reason", "code", "filename"):
             if attr not in extra and hasattr(e, attr):
                 self.extra[attr] = getattr(e, attr)
@@ -68,9 +72,11 @@ class SCSError(Exception):
                 self.extra["read_error"] = e
             else:
                 data = data.decode("utf-8")
-                begin, end = data.find("<Message>"), data.find("</Message>")
-                if min(begin, end) >= 0:
-                    self.msg = data[begin + 9:end]
+                try:
+                    msgJsonDict = json.loads(data)
+                    self.msg = msgJsonDict['Message']
+                except Exception, e:
+                    print e
         return self
 
     @property
@@ -117,15 +123,16 @@ def _upload_part(bucket_name, key_name, upload_id, part, source_path, offset,
             with FileChunkIO(source_path, 'r', offset=offset,
                              bytes=chunk_bytes) as fp:
                 headers={"Content-Length":str(chunk_bytes)}
-                headers = bucket.put(key_name, fp, headers=headers, args={'partNumber':'%i'%part.part_num,
+                scsResponse = bucket.put(key_name, fp, headers=headers, args={'partNumber':'%i'%part.part_num,
                                                          'uploadId':upload_id})
-                part.etag = headers.getheader('ETag')
+                part.etag = scsResponse.urllib2Response.info().getheader('ETag')
                 return part
         except Exception, exc:
             if retries_left:
                 return _upload(retries_left=retries_left - 1)
             else:
                 print 'Failed uploading part #%d' % part.part_num
+                print exc
                 raise exc
         else:
             if debug == 1:
@@ -322,6 +329,45 @@ class SCSListing(object):
             isPrefix=False
             return (name, isPrefix, sha1, expiration_time, modify, owner, md5, content_type, size)
 
+class SCSResponse(object):
+    ''' response返回结果 '''
+    def __init__(self, urllib2Request, urllib2Response):
+        self.urllib2Request = urllib2Request
+        self.urllib2Response = urllib2Response
+#         self.responseBody = responseBody
+        self._responseBody = None
+        
+        self.responseHeaders = dict(self.urllib2Response.info())
+        
+    def read(self, CHUNK=0):
+        try:
+            if CHUNK != 0:
+                chunk =  self.urllib2Response.read(CHUNK)
+            else:
+                chunk = self.urllib2Response.read()
+                
+            if 'content-type' in self.responseHeaders and cmp('application/json',self.responseHeaders['content-type']) == 0 and self._responseBody is None:
+                self._responseBody = chunk
+            
+            return chunk
+        except Exception , e:
+                print e
+    
+    def close(self):
+        self.read()
+        self.urllib2Response.close()
+        return self
+    
+    def info(self):
+        return self.urllib2Response.info()
+    
+    @property
+    def responseBody(self):
+        if 'content-type' in self.responseHeaders and cmp('application/json',self.responseHeaders['content-type']) == 0 and self._responseBody is None:
+            return self.read()
+        else:
+            return self._responseBody
+
 class SCSBucket(object):
     default_encoding = "utf-8"
     n_retries = 10
@@ -394,20 +440,23 @@ class SCSBucket(object):
                 else:
                     response = self.opener.open(req)
                 
-                return response
+#                 return response, req
+                return SCSResponse(req, response)
+
             except (urllib2.HTTPError, urllib2.URLError), e:
                 # If SCS gives HTTP 500, we should try again.
                 ecode = getattr(e, "code", None)
-                if ecode == 500:
-                    print '=======500========'
-                    continue
-                elif ecode == 404:
+#                 print '==========----==========',ecode
+#                 if ecode == 500:
+#                     continue
+#                 el
+                if ecode == 404:
                     exc_cls = KeyNotFound
                 elif ecode == 400:
                     exc_cls = BadRequest
                 else:
                     exc_cls = SCSError
-                raise exc_cls.from_urllib(e, key=scsreq.key)
+                raise exc_cls.from_urllib(e, key=scsreq.key, req = req)
         else:
             raise RuntimeError("ran out of retries")  # Shouldn't happen.
 
@@ -417,20 +466,21 @@ class SCSBucket(object):
         return self.send(self.request(*a, **k))
 
     def get(self, key):
-        response = self.send(self.request(key=key))
-        response.scs_info = info_dict(dict(response.info()))
-        return response
+        scsResponse = self.send(self.request(key=key))
+#         response.scs_info = info_dict(dict(response.info()))
+        return scsResponse
 
     def info(self, key):
-        response = self.send(self.request(method="HEAD", key=key))
-        rv = info_dict(dict(response.info()))
-        response.close()
+#         response, request = self.send(self.request(method="HEAD", key=key))
+        scsResponse = self.send(self.request(method="HEAD", key=key))
+        rv = info_dict(dict(scsResponse.urllib2Response.info()))
+        scsResponse.close()
         return rv
     
     def meta(self, key=None):
-        response = self.send(self.request(method="GET", key=key, subresource='meta'))
-        metaResult = json.loads(response.read())
-        response.close()
+        scsResponse = self.send(self.request(method="GET", key=key, subresource='meta'))
+        metaResult = json.loads(scsResponse.read())
+        scsResponse.close()
         return metaResult
 
     def put(self, key, data=None, acl=None, metadata={}, mimetype=None,
@@ -447,20 +497,31 @@ class SCSBucket(object):
         if transformer: data = transformer(headers, data)
         if "Content-Length" not in headers:
 #             if isinstance(data, file)  isinstance(data, FileChunkIO):
-            if hasattr(data,'fileno'):
+            
+            if hasattr(data,'__len__'):
+                headers["Content-Length"] = str(len(data))
+            elif hasattr(data,'fileno'):
                 headers["Content-Length"] = str(getSize(data.name))
             else:
-                headers["Content-Length"] = str(len(data))
+                raise ValueError("Content-Length must be defined!!")
+                
         if "s-sina-sha1" not in headers:
             headers["s-sina-sha1"] = aws_md5(data)
         scsreq = self.request(method="PUT", key=key, data=data, headers=headers, 
                               args=args, subresource=subresource)
-        response = self.send(scsreq)
-        headers = response.info()
-        response.close()
-        return headers
-                
+        scsResponse = self.send(scsreq)
+        return scsResponse
     
+    def putFile(self, key, filePath, progressCallback=None, acl=None, metadata={}, mimetype=None,
+            transformer=None, headers={}, args=None, subresource=None):
+        '''
+            filePath            本地文件路径
+            progressCallback    上传文件进度回调方法    _callback(self._total, len(data), *self._args)
+        '''
+        headers["s-sina-sha1"] = aws_md5(file(filePath))
+        fileWithCallback = FileWithCallback(filePath, 'r', progressCallback)
+        return self.put(key, fileWithCallback, acl, metadata, mimetype, transformer, headers, args, subresource)
+               
     def put_relax(self,key,sina_sha1, s_sina_length, acl=None, 
                   metadata={}, mimetype=None,headers={}):
         '''
@@ -487,7 +548,7 @@ class SCSBucket(object):
         if "Content-Length" not in headers:
             headers["Content-Length"] = 0
         scsreq = self.request(method="PUT", key=key, headers=headers,subresource='relax')
-        self.send(scsreq).close()
+        return self.send(scsreq).close()
         
     def update_meta(self, key, metadata={}, remove_metadata=[], acl=None, 
                     mimetype=None, headers={}):
@@ -506,7 +567,7 @@ class SCSBucket(object):
         if "Content-Length" not in headers:
             headers["Content-Length"] = 0
         scsreq = self.request(method="PUT", key=key, headers=headers, subresource='meta')
-        self.send(scsreq).close()   
+        return self.send(scsreq).close()   
 
     def acl_info(self, key, mimetype=None, headers={}):
         '''
@@ -520,9 +581,9 @@ class SCSBucket(object):
         if "Content-Length" not in headers:
             headers["Content-Length"] = 0
         scsreq = self.request(key=key, args={'formatter':'json'}, headers=headers, subresource='acl')
-        response = self.send(scsreq)
-        aclResult = json.loads(response.read())
-        response.close()
+        scsResponse = self.send(scsreq)
+        aclResult = json.loads(scsResponse.read())
+        scsResponse.close()
         return aclResult
     
     def update_acl(self, key, acl={}, mimetype=None, headers={}):
@@ -554,16 +615,19 @@ class SCSBucket(object):
         if "Content-Length" not in headers:
             headers["Content-Length"] = str(len(aclJson))
         scsreq = self.request(method="PUT", key=key, data=aclJson, headers=headers, subresource='acl')
-        self.send(scsreq).close()
+        scsResponse = self.send(scsreq)
+        return scsResponse.close()
+        
 
     def delete(self, key):
         try:
-            resp = self.send(self.request(method="DELETE", key=key))
+            scsResponse = self.send(self.request(method="DELETE", key=key))
+            return True
         except KeyNotFound, e:
             e.fp.close()
             return False
         else:
-            return 200 <= resp.code < 300
+            return 200 <= scsResponse.urllib2Response.code < 300
 
     def copy(self, source, key, acl=None, metadata=None,
              mimetype=None, headers={}):
@@ -582,7 +646,7 @@ class SCSBucket(object):
             headers.update(metadata_headers(metadata))
         else:
             headers["X-AMZ-Metadata-Directive"] = "COPY"
-        self.send(self.request(method="PUT", key=key, headers=headers)).close()
+        return self.send(self.request(method="PUT", key=key, headers=headers)).close()
 
     def _get_listing(self, args):
         return SCSListing.parse(self.send(self.request(key='', args=args)))
@@ -627,9 +691,9 @@ class SCSBucket(object):
             List buckets.
             Yields tuples of (Name, CreationDate).
         """
-        response = self.send(self.request(key=''))
-        bucketJsonObj = json.loads(response.read())
-        response.close()
+        scsResponse = self.send(self.request(key=''))
+        bucketJsonObj = json.loads(scsResponse.read())
+        scsResponse.close()
         
         for item in bucketJsonObj['Buckets']:
             entry = (item['Name'],rfc822_parsedate(item['CreationDate']))
@@ -687,10 +751,9 @@ class SCSBucket(object):
             headers = {"Content-Length": "0"}
         if acl:
             headers["X-AMZ-ACL"] = acl
-        resp = self.send(self.request(method="PUT", key=None,
+        scsResponse = self.send(self.request(method="PUT", key=None,
                                       data=config_xml, headers=headers))
-        resp.close()
-        return resp.code == 200
+        return scsResponse.close()
 
     def delete_bucket(self):
         return self.delete(None)
@@ -719,9 +782,9 @@ class SCSBucket(object):
         if acl: headers["X-AMZ-ACL"] = acl
         headers["Content-Length"] = "0"
         scsreq = self.request(method="POST", key=key_name, headers=headers, subresource='multipart')
-        response = self.send(scsreq)
-        initMultipartUploadResult = json.loads(response.read())
-        response.close()
+        scsResponse = self.send(scsreq)
+        initMultipartUploadResult = json.loads(scsResponse.read())
+        scsResponse.close()
         multipart = MultipartUpload(self)
         multipart.upload_id = initMultipartUploadResult["UploadId"]
         multipart.bucket_name = initMultipartUploadResult["Bucket"]
@@ -746,8 +809,8 @@ class SCSBucket(object):
             headers["s-sina-sha1"] = aws_md5(data)
         
         scsreq = self.request(method="POST", data=data, headers=headers, key=multipart.key_name, args={'uploadId':multipart.upload_id})
-        response = self.send(scsreq)
-        response.close()
+        scsResponse = self.send(scsreq)
+        return scsResponse.close()
         
     
     def list_parts(self,upload_id,key_name):
@@ -757,9 +820,9 @@ class SCSBucket(object):
         headers["Content-Length"] = 0
         
         scsreq = self.request(method="GET", headers=headers, key=key_name, args={'uploadId':upload_id})
-        response = self.send(scsreq)
-        parts = json.loads(response.read())
-        response.close()
+        scsResponse = self.send(scsreq)
+        parts = json.loads(scsResponse.read())
+        scsResponse.close()
         return parts
     
         
@@ -824,6 +887,8 @@ class SCSBucket(object):
 #             key.set_acl(acl)
         else:
 #             mp.cancel_upload()
+            print  len(multipart.parts) , chunk_amount
+
             raise RuntimeError("multipart upload is failed!!")
         
 

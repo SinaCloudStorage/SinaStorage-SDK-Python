@@ -148,7 +148,10 @@ def guess_mimetype(fn, default="application/octet-stream"):
         return default
     bfn, ext = fn.lower().rsplit(".", 1)
     if ext == "jpg": ext = "jpeg"
-    return mimetypes.guess_type(bfn + "." + ext)[0] or default
+    try:
+        return mimetypes.guess_type(bfn + "." + ext)[0]
+    except Exception, e:
+        return default
 
 def info_dict(headers):
     rv = {"headers": headers, "metadata": headers_metadata(headers)}
@@ -210,3 +213,21 @@ def name(o):
 def getSize(filename):
     st = os.stat(filename)#.st_size
     return st.st_size
+    
+class FileWithCallback(file):
+    def __init__(self, path, mode, callback, *args):
+        file.__init__(self, path, mode)
+        self.seek(0, os.SEEK_END)
+        self._total = self.tell()
+        self.seek(0)
+        self._callback = callback
+        self._args = args
+
+    def __len__(self):
+        return self._total
+
+    def read(self, size):
+        data = file.read(self, size)
+        if self._callback:
+            self._callback(self._total, len(data), *self._args)
+        return data
