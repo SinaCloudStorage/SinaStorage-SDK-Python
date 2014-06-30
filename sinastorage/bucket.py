@@ -518,7 +518,7 @@ class SCSBucket(object):
             filePath            本地文件路径
             progressCallback    上传文件进度回调方法    _callback(self._total, len(data), *self._args)
         '''
-        f = file(filePath)
+        f = file(filePath, 'rb')
         headers["s-sina-sha1"] = aws_md5(f)
         f.close()
         
