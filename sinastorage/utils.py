@@ -149,7 +149,8 @@ def guess_mimetype(fn, default="application/octet-stream"):
     bfn, ext = fn.lower().rsplit(".", 1)
     if ext == "jpg": ext = "jpeg"
     try:
-        return mimetypes.guess_type(bfn + "." + ext)[0]
+        content_type = mimetypes.guess_type(bfn + "." + ext)[0]
+        return content_type if content_type is not None else default
     except Exception, e:
         return default
 

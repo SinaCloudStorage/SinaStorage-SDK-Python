@@ -15,10 +15,18 @@ from sinastorage.bucket import SCSBucket,ACL, SCSError, KeyNotFound, BadRequest
 
 sinastorage.setDefaultAppInfo('accessKey', 'accessSecret')
 
+uploadedAmount = 0.0
+def putFileCallback(total, uploadAmount):
+    global uploadedAmount
+    uploadedAmount += uploadAmount*1.0
+    print '=====', 'complete percent : %d%%'%(uploadedAmount/total*100)
+
 def put_file():
     s = SCSBucket('create-a-bucket11')
 #     print s.put('sss.txt',u'测试测试testtest')
-    print s.putFile('sample.py', '/Users/hanchao/Desktop/sample.py')
+    print s.putFile('111111qt-opensource-mac-4.8.6.dmg', 
+                    '/Users/hanchao/Desktop/qt-opensource-mac-4.8.6.dmg', 
+                    putFileCallback)
 
 def put_file_relax():
     s = SCSBucket('test11')
@@ -141,12 +149,12 @@ def listAllPart():
     
 if __name__ == '__main__':
     try:
-        create_bucket()
+#         create_bucket()
 #         list_bucket()
 #         remove_bucket()
 #         list_bucket_files()
 #         get_bucket_meta()
-#         put_file()
+        put_file()
 #         put_file_relax()
 #         get_file()
 #         copy_file()
