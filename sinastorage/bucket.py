@@ -518,7 +518,17 @@ class SCSBucket(object):
             filePath            本地文件路径
             progressCallback    上传文件进度回调方法    _callback(self._total, len(data), *self._args)
         '''
-        headers["s-sina-sha1"] = aws_md5(file(filePath))
+        f = file(filePath)
+        headers["s-sina-sha1"] = aws_md5(f)
+        f.close()
+        
+        from email.utils import formatdate
+        from calendar import timegm
+        expireDate = expire2datetime(datetime.timedelta(minutes=60*24))
+        expireDate =  formatdate(timegm(expireDate.timetuple()), usegmt=True)
+    
+        headers['Date'] = expireDate
+        
         fileWithCallback = FileWithCallback(filePath, 'r', progressCallback)
         return self.put(key, fileWithCallback, acl, metadata, mimetype, transformer, headers, args, subresource)
                
