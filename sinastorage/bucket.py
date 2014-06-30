@@ -120,7 +120,7 @@ def _upload_part(bucket_name, key_name, upload_id, part, source_path, offset,
                 print 'Start uploading part #%d ...' % part.part_num
             
             bucket = SCSBucket(bucket_name)
-            with FileChunkIO(source_path, 'r', offset=offset,
+            with FileChunkIO(source_path, 'rb', offset=offset,
                              bytes=chunk_bytes) as fp:
                 headers={"Content-Length":str(chunk_bytes)}
                 scsResponse = bucket.put(key_name, fp, headers=headers, args={'partNumber':'%i'%part.part_num,
@@ -518,8 +518,11 @@ class SCSBucket(object):
             filePath            本地文件路径
             progressCallback    上传文件进度回调方法    _callback(self._total, len(data), *self._args)
         '''
-        headers["s-sina-sha1"] = aws_md5(file(filePath))
-        fileWithCallback = FileWithCallback(filePath, 'r', progressCallback)
+        f = file(filePath, 'rb')
+        headers["s-sina-sha1"] = aws_md5(f)
+        f.close()
+        
+        fileWithCallback = FileWithCallback(filePath, 'rb', progressCallback)
         return self.put(key, fileWithCallback, acl, metadata, mimetype, transformer, headers, args, subresource)
                
     def put_relax(self,key,sina_sha1, s_sina_length, acl=None, 
