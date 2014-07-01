@@ -373,6 +373,12 @@ class SCSBucket(object):
     n_retries = 10
 
     def __init__(self, name=None, base_url=None, timeout=None, secure=False):
+        if sinastorage.getDefaultAppInfo() is None :
+            raise ValueError("access_key and secret_key must not be None! Please set sinastorage.setDefaultAppInfo('access_key', 'secret_key') first!")
+        self.access_key = sinastorage.getDefaultAppInfo().access_key
+        self.secret_key = sinastorage.getDefaultAppInfo().secret_key
+        secure = sinastorage.getDefaultAppInfo().secure
+        
         scheme = ("http", "https")[int(bool(secure))]
         if not base_url:
             base_url = "%s://%s" % (scheme, sinastorage_domain)
@@ -384,10 +390,6 @@ class SCSBucket(object):
                                  % (secure, scheme))
         self.opener = self.build_opener()
         self.name = name
-        if sinastorage.getDefaultAppInfo() is None :
-            raise ValueError("access_key and secret_key must not be None! Please set sinastorage.setDefaultAppInfo('access_key', 'secret_key') first!")
-        self.access_key = sinastorage.getDefaultAppInfo().access_key
-        self.secret_key = sinastorage.getDefaultAppInfo().secret_key
         
         self.base_url = base_url
         self.timeout = timeout
@@ -440,13 +442,11 @@ class SCSBucket(object):
                 else:
                     response = self.opener.open(req)
                 
-#                 return response, req
                 return SCSResponse(req, response)
 
             except (urllib2.HTTPError, urllib2.URLError), e:
                 # If SCS gives HTTP 500, we should try again.
                 ecode = getattr(e, "code", None)
-#                 print '==========----==========',ecode
 #                 if ecode == 500:
 #                     continue
 #                 el
