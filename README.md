@@ -5,7 +5,7 @@
 
 ##SDK 环境要求
 
-要求**Python 2.5+** ，不支持Python 3。
+要求**Python 2.7** ，不支持Python 3。
 完全由Python标准库开发。
 
 ##快速上手
@@ -43,18 +43,26 @@ for bucket in buckets_generator:
 #(bucketName,creationDate)				#tuple类型
 ```
 
+* 获取bucket Meta信息:
+```python
+s = SCSBucket('bucket的名称')
+metaDict = s.meta()
+print metaDict
+#{u'DeleteQuantity': 186, u'DeleteCapacity': 1699524638, u'Capacity': 2657406529, u'PoolName': u'plSAE', u'ProjectID': 4174, u'SizeC': 0, u'DownloadCapacity': 7327841538, u'UploadQuantity': 240, u'CapacityC': 0, u'ACL': {u'GRPS000000ANONYMOUSE': [u'read', u'write_acp'], u'SINA0000001001NHT3M7': [u'read', u'write', u'read_acp', u'write_acp'], u'GRPS0000000CANONICAL': [u'read', u'write', u'read_acp', u'write_acp']}, u'Project': u'test11', u'UploadCapacity': 4356931167, u'RelaxUpload': True, u'DownloadQuantity': 2546, u'Last-Modified': u'Fri, 28 Mar 2014 09:07:45 UTC', u'QuantityC': 0, u'Owner': u'SINA000000xxxxxxx', u'Quantity': 54}
+
+```
+
 ###3. object 操作:
 * 上传文件/内容:
 ```python
 #文件内容
 s = SCSBucket('bucket的名称')
-s.put('文件上传路径',u'文件内容')
+scsResponse = s.put('文件上传路径',u'文件内容')
 
 #文件
 s = SCSBucket('bucket的名称')
-f = open("本地文件路径",'rb')
-s.put("文件上传路径",f)
-f.close()
+s.putFile('文件上传路径', '本地文件路径', 上传回调函数)
+
 ```
 * 秒传文件:
 ```python
@@ -71,7 +79,7 @@ s.copy(source='/源文件bucket名称/源文件uri地址', key='文件上传路�
 ```python
 s = SCSBucket('bucket的名称')
 #返回generator对象
-files_generator = s.listdir(prefix='10000', marker='10000/1007.txt', limit=10)
+files_generator = s.listdir(prefix='文件名前缀', marker='Key的初始位置', limit=返回条数, delimiter='折叠字符')
 
 #相关信息，通过generator属性获得
 print ('truncated : %r\n'
@@ -93,26 +101,21 @@ for item in files_generator:
 
 #(name, isPrefix, sha1, expiration_time, modify, owner, md5, content_type, size)
 ```
+
 * 下载文件:
 ```python
 s = SCSBucket('bucket的名称')
-f = s['需要下载的文件路径']
-
-#获取文件相关信息
-print f.scs_info["mimetype"]
-#'application/octet-stream'
-
-print f.scs_info.keys()
-#['mimetype', 'modify', 'headers', 'date', 'size', 'metadata']
-
-#下载文件至本地
+response = s['a/asdf/新建 文本文档.txt']
+#保存文件至本地
 CHUNK = 16 * 1024
 with open('本地目标文件地址', 'wb') as fp:
     while True:
-        chunk = f.read(CHUNK)
+        chunk = response.read(CHUNK)
         if not chunk: break
         fp.write(chunk)
+            
 ```
+
 * 删除文件:
 ```python
 s = SCSBucket('bucket的名称')
@@ -149,6 +152,15 @@ acl[ACL.ACL_GROUP_ANONYMOUSE] = [ACL.ACL_READ]
 acl[ACL.ACL_GROUP_CANONICAL] = [ACL.ACL_READ_ACP,ACL.ACL_WRITE_ACP]
 
 s.update_acl('服务器端文件路径', acl)
+```
+
+* 获取文件Meta信息:
+```python
+s = SCSBucket('bucket的名称')
+metaDict = s.meta('服务器端文件路径')
+print metaDict
+#{u'Info': None, u'File-Name': u'aaaa.txt', u'Info-Int': None, u'Content-MD5': u'86924f3b03cc23f04bcb3f3c1e13e57e', u'Last-Modified': u'Fri, 04 Jul 2014 06:49:03 UTC', u'Content-SHA1': u'9b8c7c8b7654339d3301d95945a6933212bb50b0', u'Owner': u'SINA000000xxxxxxx', u'Type': u'application/octet-stream', u'File-Meta': {u'Content-Type': u'application/octet-stream', u'x-amz-meta-crc32': u'75414E4E'}, u'Size': 5253200}
+
 ```
 
 * 分片上传:

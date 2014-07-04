@@ -67,9 +67,7 @@ def get_bucket_meta():
 
 def get_file():
     s = SCSBucket('asdasdasdasd')
-#     response = s.get('dage1.txt')
     response = s['a/asdf/新建 文本文档.txt']
-#     print response.scs_info
     CHUNK = 16 * 1024
     with open('111', 'wb') as fp:
         while True:
@@ -88,7 +86,7 @@ def copy_file():
 
 def get_file_meta():
     s = SCSBucket('test11')
-    metaDict = s.meta('testpdf.pdf')
+    metaDict = s.meta('InstoreApp.ipa')
     print metaDict
 
 def delete_file():
@@ -153,8 +151,8 @@ if __name__ == '__main__':
 #         list_bucket()
 #         remove_bucket()
 #         list_bucket_files()
-#         get_bucket_meta()
-        put_file()
+        get_bucket_meta()
+#         put_file()
 #         put_file_relax()
 #         get_file()
 #         copy_file()
