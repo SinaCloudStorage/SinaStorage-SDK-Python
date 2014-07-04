@@ -9,7 +9,7 @@ import mimetypes
 from base64 import b64encode
 from urllib import quote
 from calendar import timegm
-import os
+import os,time
 
 def _amz_canonicalize(headers):
     r"""Canonicalize AMZ headers in that certain AWS way.
@@ -223,12 +223,18 @@ class FileWithCallback(file):
         self.seek(0)
         self._callback = callback
         self._args = args
+        self.lastTimestamp = time.time()
+        self.received = 0
 
     def __len__(self):
         return self._total
 
     def read(self, size):
         data = file.read(self, size)
-        if self._callback:
-            self._callback(self._total, len(data), *self._args)
+        self.received += len(data)
+        if self._callback and (time.time() - self.lastTimestamp >= 0.2):
+            self._callback(self._total, self.received, *self._args)
+            self.lastTimestamp = time.time()
+            self.received = 0
+            
         return data
