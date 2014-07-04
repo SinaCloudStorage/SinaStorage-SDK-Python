@@ -21,6 +21,11 @@ def putFileCallback(total, uploadAmount):
     uploadedAmount += uploadAmount*1.0
     print '=====', 'complete percent : %d%%'%(uploadedAmount/total*100)
 
+def put_content():
+    content = u'this is a file content text!!'
+    s = SCSBucket('create-a-bucket11')
+    print s.put('sss.txt',content)
+
 def put_file():
     s = SCSBucket('create-a-bucket11')
 #     print s.put('sss.txt',u'测试测试testtest')
@@ -147,11 +152,12 @@ def listAllPart():
     
 if __name__ == '__main__':
     try:
-#         create_bucket()
+        create_bucket()
 #         list_bucket()
 #         remove_bucket()
 #         list_bucket_files()
-        get_bucket_meta()
+#         get_bucket_meta()
+#         put_content()
 #         put_file()
 #         put_file_relax()
 #         get_file()
