@@ -43,6 +43,7 @@ class SCSError(Exception):
         self.msg, self.extra = self.args
         self.urllib2Response = None
         self.urllib2Request = None
+        self.data = ''
 
     def __str__(self):
         rv = self.msg
@@ -56,8 +57,14 @@ class SCSError(Exception):
     def from_urllib(cls, e, **extra):
         self = cls("HTTP error", **extra)
         self.urllib2Response = e
-        self.hdrs = e.hdrs
-        self.url = e.url
+        if hasattr(e, 'hdrs'): 
+            self.hdrs = e.hdrs 
+        else: 
+            self.hdrs = []
+        if hasattr(e, 'url'): 
+            self.url = e.url
+        else:
+            self.url = ''
         self.urllib2Request = self.extra['req']
         for attr in ("reason", "code", "filename"):
             if attr not in extra and hasattr(e, attr):
@@ -68,15 +75,19 @@ class SCSError(Exception):
             # as in chunked mode, but SCS gives an empty reply.
             try:
                 self.data = data = self.fp.read()
-            except (httplib.HTTPException, urllib2.URLError), e:
+            except (httplib.HTTPException, urllib2.URLError, ), e:
                 self.extra["read_error"] = e
+                self.data = u'%s'%self.extra['reason']
             else:
                 data = data.decode("utf-8")
                 try:
                     msgJsonDict = json.loads(data)
                     self.msg = msgJsonDict['Message']
                 except Exception, e:
+                    self.data = u'%s'%self.extra['reason']
                     print e
+        else:
+            self.data = u'%s'%self.extra['reason']
         return self
 
     @property
@@ -337,7 +348,7 @@ class SCSResponse(object):
 #         self.responseBody = responseBody
         self._responseBody = None
         
-        self.responseHeaders = dict(self.urllib2Response.info())
+        self.responseHeaders = dict(self.urllib2Response.info()) if hasattr(self.urllib2Response,'info') else []
         
     def read(self, CHUNK=0):
         try:
