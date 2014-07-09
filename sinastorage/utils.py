@@ -10,6 +10,9 @@ from base64 import b64encode
 from urllib import quote
 from calendar import timegm
 import os,time
+# from bucket import ManualCancel
+import bucket
+
 
 def _amz_canonicalize(headers):
     r"""Canonicalize AMZ headers in that certain AWS way.
@@ -225,14 +228,18 @@ class FileWithCallback(file):
         self._args = args
         self.lastTimestamp = time.time()
         self.received = 0
+        
+        self.cancelRead = False
 
     def __len__(self):
         return self._total
 
     def read(self, size):
+        if self.cancelRead :
+            raise bucket.ManualCancel('operation abort')
         data = file.read(self, size)
         self.received += len(data)
-        if self._callback and (time.time() - self.lastTimestamp >= 0.2):
+        if self._callback and (time.time() - self.lastTimestamp >= 1.0):
             self._callback(self._total, self.received, *self._args)
             self.lastTimestamp = time.time()
             self.received = 0

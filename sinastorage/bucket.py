@@ -97,6 +97,11 @@ class KeyNotFound(SCSError, KeyError):
     @property
     def key(self): return self.extra.get("key")
     
+class ManualCancel(SCSError, KeyError):
+    ''' 手动停止 '''
+    @property
+    def key(self): return self.extra.get("key")
+    
 class BadRequest(SCSError, KeyError):
     @property
     def key(self): return self.extra.get("key")
@@ -403,6 +408,7 @@ class SCSBucket(object):
         self.name = name
         
         self.base_url = base_url
+        self.timeout = 30
         self.timeout = timeout
 
     def __str__(self):
@@ -455,7 +461,11 @@ class SCSBucket(object):
                 
                 return SCSResponse(req, response)
 
-            except (urllib2.HTTPError, urllib2.URLError), e:
+            except (urllib2.HTTPError, urllib2.URLError, ManualCancel), e:
+                if isinstance(e, ManualCancel):     #手动取消
+                    e.urllib2Request = req
+                    raise e
+                
                 # If SCS gives HTTP 500, we should try again.
                 ecode = getattr(e, "code", None)
 #                 if ecode == 500:
@@ -522,6 +532,24 @@ class SCSBucket(object):
                               args=args, subresource=subresource)
         scsResponse = self.send(scsreq)
         return scsResponse
+    
+    def putFileByHeaders(self, key, fileWithCallback):
+        '''
+            filePath            本地文件路径
+            progressCallback    上传文件进度回调方法    _callback(self._total, len(data), *self._args)
+        '''
+        headers={}
+        f = file(fileWithCallback.name, 'rb')
+        headers["s-sina-sha1"] = aws_md5(f)
+        f.close()
+        
+        from email.utils import formatdate
+        from calendar import timegm
+        expireDate = expire2datetime(datetime.timedelta(minutes=60*24))
+        expireDate =  formatdate(timegm(expireDate.timetuple()), usegmt=True)
+        headers['Date'] = expireDate
+        
+        return self.put(key=key, data=fileWithCallback, headers=headers)
     
     def putFile(self, key, filePath, progressCallback=None, acl=None, metadata={}, mimetype=None,
             transformer=None, headers={}, args=None, subresource=None):
