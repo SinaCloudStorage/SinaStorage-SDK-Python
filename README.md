@@ -5,8 +5,8 @@
 
 ##SDK 环境要求
 
-要求**Python 2.7** ，不支持Python 3。
-完全由Python标准库开发。
+* Python 2.7 (暂不支持Python 3）
+* FileChunkIO
 
 ##快速上手
 
