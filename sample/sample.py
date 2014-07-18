@@ -139,11 +139,17 @@ def remove_bucket():
     s.delete_bucket()
 
 ''' 分片上传 '''
+def customCallback(upload_id, part_num, total, received):
+    print '==customCallback=====upload_id=====',upload_id,'=======part_num=====',part_num,'-------total----------',total,'====received======',received
+    
+def customNumCallback(upload_id, partAmount, part):
+    print '==customNumCallback=====upload_id=====',upload_id,'-------partAmount----------',partAmount,'-------part----------',part.part_num
+    
 def multipartUpload():
     s = SCSBucket('create-a-bucket11')
 #     initMultipartUploadResult = s.initiateMultipartUpload('test-python.zip');
 #     print initMultipartUploadResult
-    s.multipart_upload('qt-opensource-mac-4.8.6.dmg', '/Users/hanchao/Desktop/qt-opensource-mac-4.8.6.dmg')
+    s.multipart_upload('qt-opensource-mac-4.8.6.dmg', '/Users/hanchao/Desktop/qt-opensource-mac-4.8.6.dmg',cb=customCallback,num_cb=customNumCallback)
     
 def listAllPart():
     s = SCSBucket('create-a-bucket11')
@@ -152,7 +158,7 @@ def listAllPart():
     
 if __name__ == '__main__':
     try:
-        create_bucket()
+#         create_bucket()
 #         list_bucket()
 #         remove_bucket()
 #         list_bucket_files()
@@ -171,7 +177,7 @@ if __name__ == '__main__':
 #         print make_url()
 #         print make_url_authed()
 
-#         multipartUpload()
+        multipartUpload()
 #         listAllPart()
 
     except KeyNotFound ,e:

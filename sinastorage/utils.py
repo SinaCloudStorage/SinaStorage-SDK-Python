@@ -115,7 +115,6 @@ def aws_md5(data):
 #     else:
 #         hasher.update(data)
 #     return b64encode(hasher.digest()).decode("ascii")
-
     hasher = hashlib.new("sha1")
     if hasattr(data, "read"):
         data.seek(0)
@@ -127,6 +126,7 @@ def aws_md5(data):
         data.seek(0)
     else:
         hasher.update(data)
+        
     return hasher.hexdigest().decode("ascii")#hex(hasher.digest()).decode("ascii")
 
 def aws_urlquote(value):
