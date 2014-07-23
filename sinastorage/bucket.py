@@ -22,7 +22,7 @@ from sinastorage.utils import (_amz_canonicalize, metadata_headers, metadata_rem
 
 from sinastorage.multipart import MultipartUpload,Part,FileChunkWithCallback
 
-sinastorage_domain = "sinastorage.com"
+sinastorage_domain = "sinastorage.cn"
 
 class ACL(object):
     ACL_GROUP_ANONYMOUSE    = 'GRPS000000ANONYMOUSE'        #匿名用户组 
