@@ -120,62 +120,65 @@ class AnyMethodRequest(urllib2.Request):
     def get_method(self):
         return self.method
 
-# def _upload_part(bucket_name, key_name, multipart, part, source_path, offset, 
-#                  chunk_bytes, cb, num_cb, amount_of_retries=0, debug=1):
-#     from filechunkio import FileChunkIO
-#     
-#     """
-#     Uploads a part with retries.
-#     """
-#     if debug == 1:
-#         print "_upload_part(%s, %s, %s, %s, %s)" % (source_path, offset, bytes, multipart.upload_id, part.part_num)
-# 
-#     def _upload(retries_left=amount_of_retries):
-#         try:
-#             if debug == 1:
-#                 print 'Start uploading part #%d ...' % part.part_num
-#             
-#             bucket = SCSBucket(bucket_name)
-#             
-#             with FileChunkWithCallback(source_path, 'rb', offset=offset,
-#                              bytes=chunk_bytes, cb=cb, upload_id=multipart.upload_id, part_num=part.part_num) as fp:
-#                 headers={"Content-Length":str(chunk_bytes)}
-#                 
-#                 with FileChunkIO(source_path, 'rb', offset=offset,
-#                                  bytes=chunk_bytes) as fpForMd5:
-#                     headers["s-sina-sha1"] = aws_md5(fpForMd5)
-#                 
-#                 scsResponse = bucket.put(key_name, fp, headers=headers, args={'partNumber':'%i'%part.part_num,
-#                                                          'uploadId':multipart.upload_id})
-#                 part.etag = scsResponse.urllib2Response.info().getheader('ETag')
-#                 if num_cb:num_cb(multipart.upload_id, multipart.parts_amount, part)
-#                 return part
-#         except Exception, exc:
-#             raise exc
-#             if retries_left:
-#                 return _upload(retries_left=retries_left - 1)
-#             else:
-#                 print 'Failed uploading part #%d' % part.part_num
-#                 print exc
-#                 raise exc
-#         else:
-#             if debug == 1:
-#                 print '... Uploaded part #%d' % part.part_num
-# 
-#     return _upload()
-
-def _upload_part(bucket_name, key_name, multipart, part, source_path, offset, 
+def _upload_part(bucket_name, key_name, upload_id, parts_amount, part, source_path, offset, 
                  chunk_bytes, cb, num_cb, amount_of_retries=0, debug=1):
-    
-    fp = FileChunkWithCallback(source_path, 'rb', offset=offset,
-                             bytes=chunk_bytes, cb=cb, upload_id=multipart.upload_id, part_num=part.part_num)
-    
-    try:
-        return _upload_part_by_fileWithCallback(bucket_name, key_name, multipart, part, fp, num_cb, amount_of_retries)
-    finally:
-        fp.close()
+    from filechunkio import FileChunkIO
+      
+    """
+    Uploads a part with retries.
+    """
+    if debug == 1:
+        print "_upload_part(%s, %s, %s, %s, %s)" % (source_path, offset, bytes, upload_id, part.part_num)
+  
+    def _upload(retries_left=amount_of_retries):
+        try:
+            if debug == 1:
+                print 'Start uploading part #%d ...' % part.part_num
+              
+            bucket = SCSBucket(bucket_name)
+              
+            with FileChunkWithCallback(source_path, 'rb', offset=offset,
+                             bytes=chunk_bytes, cb=cb, upload_id=upload_id, part_num=part.part_num) as fp:
+                headers={"Content-Length":str(chunk_bytes)}
+                  
+                with FileChunkIO(source_path, 'rb', offset=offset,
+                                 bytes=chunk_bytes) as fpForMd5:
+                    headers["s-sina-sha1"] = aws_md5(fpForMd5)
+                  
+                scsResponse = bucket.put(key_name, fp, headers=headers, args={'partNumber':'%i'%part.part_num,
+                                                         'uploadId':upload_id})
+                part.etag = scsResponse.urllib2Response.info().getheader('ETag')
+                if num_cb:num_cb(upload_id, parts_amount, part)
+                return part
+        except Exception, exc:
+            raise exc
+            if retries_left:
+                return _upload(retries_left=retries_left - 1)
+            else:
+                print 'Failed uploading part #%d' % part.part_num
+                print exc
+                raise exc
+        else:
+            if debug == 1:
+                print '... Uploaded part #%d' % part.part_num
+  
+    return _upload()
 
-def _upload_part_by_fileWithCallback(bucket_name, key_name, multipart, part, 
+# def _upload_part(bucket_name, key_name, upload_id, part, source_path, offset, 
+#                  chunk_bytes, cb, num_cb, amount_of_retries=0, debug=1):
+#      
+#     fp = FileChunkWithCallback(source_path, 'rb', offset=offset,
+#                              bytes=chunk_bytes, cb=cb, upload_id=upload_id, part_num=part.part_num)
+#      
+#     try:
+#         partResult = _upload_part_by_fileWithCallback(bucket_name, key_name, upload_id, part, fp, num_cb, amount_of_retries)
+#     finally:
+#         fp.close()
+#     
+#     print '=====================partResult============',partResult
+#     return partResult
+
+def _upload_part_by_fileWithCallback(bucket_name, key_name, upload_id, parts_amount, part, 
                                      fileChunkWithCallback,
                                      num_cb, amount_of_retries=0):
     from filechunkio import FileChunkIO
@@ -195,10 +198,10 @@ def _upload_part_by_fileWithCallback(bucket_name, key_name, multipart, part,
             scsResponse = bucket.put(key_name, fileChunkWithCallback, 
                                      headers=headers, 
                                      args={'partNumber':'%i'%part.part_num,
-                                           'uploadId':multipart.upload_id})
+                                           'uploadId':upload_id})
             part.etag = scsResponse.urllib2Response.info().getheader('ETag')
             part.response = scsResponse
-            if num_cb:num_cb(multipart.upload_id, multipart.parts_amount, part)
+            if num_cb:num_cb(upload_id, parts_amount, part)
             return part
         except Exception, exc:
             raise exc
@@ -222,8 +225,8 @@ class SCSRequest(object):
     def __init__(self, bucket=None, key=None, method="GET", headers={},
                  args=None, data=None, subresource=None):
         headers = headers.copy()
-        if data and "s-sina-sha1" not in headers:
-            headers["s-sina-sha1"] = aws_md5(data)
+#         if data is not None and "s-sina-sha1" not in headers:
+#             headers["s-sina-sha1"] = aws_md5(data)
         if "Date" not in headers:
             headers["Date"] = rfc822_fmtdate()
         if hasattr(bucket, "name"):
@@ -576,16 +579,15 @@ class SCSBucket(object):
         if transformer: data = transformer(headers, data)
         if "Content-Length" not in headers:
 #             if isinstance(data, file)  isinstance(data, FileChunkIO):
-            
-            if hasattr(data,'__len__'):
-                headers["Content-Length"] = str(len(data))
-            elif hasattr(data,'fileno'):
+            if hasattr(data,'fileno'):
                 headers["Content-Length"] = str(getSize(data.name))
+            elif hasattr(data,'__len__'):
+                headers["Content-Length"] = str(len(data))
             else:
                 raise ValueError("Content-Length must be defined!!")
                 
-        if "s-sina-sha1" not in headers:
-            headers["s-sina-sha1"] = aws_md5(data)
+#         if "s-sina-sha1" not in headers:
+#             headers["s-sina-sha1"] = aws_md5(data)
         scsreq = self.request(method="PUT", key=key, data=data, headers=headers, 
                               args=args, subresource=subresource)
         scsResponse = self.send(scsreq)
@@ -598,7 +600,7 @@ class SCSBucket(object):
         '''
         headers={}
         f = file(fileWithCallback.name, 'rb')
-        headers["s-sina-sha1"] = aws_md5(f)
+#         headers["s-sina-sha1"] = aws_md5(f)
         f.close()
         
         from email.utils import formatdate
@@ -978,10 +980,13 @@ class SCSBucket(object):
             offset = i * bytes_per_chunk
             remaining_bytes = source_size - offset
             chunk_bytes = min([bytes_per_chunk, remaining_bytes])
-            pool.apply_async(_upload_part, [self.name, key_name, multipart, part, source_path, offset, chunk_bytes,
-                                            cb, num_cb], callback = lambda part : multipart.parts.append(part))
-#             _upload_part(self.name, key_name, multipart.upload_id, part, source_path, offset, chunk_bytes,
+            pool.apply_async(_upload_part, args = (self.name, key_name, multipart.upload_id, multipart.parts_amount, part, source_path, offset, chunk_bytes,
+                                            cb, num_cb,), callback=lambda part : multipart.parts.append(part))
+#             partResult = _upload_part(bucketName, key_name, multipart.upload_id, multipart.parts_amount, part, source_path, offset, chunk_bytes,
 #                                             cb, num_cb)
+            
+#             multipart.parts.append(partResult)
+            
             i = i + 1
             
         pool.close()
@@ -998,6 +1003,7 @@ class SCSBucket(object):
 
             raise RuntimeError("multipart upload is failed!!")
         
+
 
 class ReadOnlySCSBucket(SCSBucket):
     """Read-only SCS bucket.
