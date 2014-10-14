@@ -23,18 +23,4 @@ setup(
     keywords = ['sina', 'scs', 'sinacloudstorage'],
     packages=['sinastorage'],#find_packages(exclude=["sample.*", "sample"]),
     install_requires=['filechunkio >= 1.5']
-#     package_data=find_package_data(
-#             PACKAGE,
-#             only_in_packages=False
-#       ),
-#     classifiers=[
-#         "Development Status :: 3 - Alpha",
-#         "Environment :: Web Environment",
-#         "Intended Audience :: Developers",
-#         "License :: OSI Approved :: BSD License",
-#         "Operating System :: OS Independent",
-#         "Programming Language :: Python",
-#         "Framework :: Django",
-#     ],
-#     zip_safe=False,
 )
