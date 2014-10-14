@@ -4,3 +4,8 @@
 .pydevproject
 
 .settings/
+build/
+dist/
+scs_sdk.egg-info/
+scs.egg-info/
+UNKNOWN.egg-info/

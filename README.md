@@ -8,6 +8,23 @@
 * Python 2.7 (暂不支持Python 3）
 * FileChunkIO
 
+
+##SDK 安装
+
+* 通过pip安装:
+
+```
+$ pip install boto
+```
+
+* 下载源码安装
+
+```
+$ git clone https://github.com/SinaCloudStorage/SinaStorage-SDK-Python.git
+$ cd SinaStorage-SDK-Python
+$ python setup.py install
+```
+
 ##快速上手
 
 ###1. 创建bucket访问对象：
