@@ -14,7 +14,7 @@
 * 通过pip安装:
 
 ```
-$ pip install boto
+$ pip install scs-sdk
 ```
 
 * 下载源码安装
