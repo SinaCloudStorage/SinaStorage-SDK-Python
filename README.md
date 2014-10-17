@@ -1,8 +1,10 @@
 #SinaStorage SDK
 
 [![Build Status](https://travis-ci.org/SinaCloudStorage/SinaStorage-SDK-Python.png?branch=master)](https://travis-ci.org/SinaCloudStorage/SinaStorage-SDK-Python)
+[![Coverage Status](https://coveralls.io/repos/SinaCloudStorage/SinaStorage-SDK-Python/badge.png)](https://coveralls.io/r/SinaCloudStorage/SinaStorage-SDK-Python)
 [![Build Status](https://pypip.in/v/scs-sdk/badge.png)](https://pypi.python.org/pypi/scs-sdk/)
 [![Egg Status](https://pypip.in/egg/scs-sdk/badge.svg)](https://pypi.python.org/pypi/scs-sdk/)
+
 
 ##概述
 新浪云存储Python平台SDK为第三方应用提供了简单易用的API调用服务，使第三方客户端无需了解复杂的验证机制即可进行授权、上传、下载等文件操作。
