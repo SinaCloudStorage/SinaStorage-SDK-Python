@@ -7,7 +7,7 @@ python:
   # - "pypy"
 # command to install dependencies
 install: 
-  - pip install .
+  - pip install filechunkio >= 1.5
   - pip install coveralls
 # command to run tests
 script:
