@@ -22,7 +22,7 @@ from sinastorage.utils import (_amz_canonicalize, metadata_headers, metadata_rem
 
 from sinastorage.multipart import MultipartUpload,Part,FileChunkWithCallback
 
-sinastorage_domain = "sinastorage.cn"
+sinastorage_domain = "sinacloud.net"
 
 class ACL(object):
     ACL_GROUP_ANONYMOUSE    = 'GRPS000000ANONYMOUSE'        #匿名用户组 
@@ -288,7 +288,7 @@ class SCSRequest(object):
             http://sinastorage.sinaapp.com/developer/interface/aws/auth.html
         '''
         stringToSign = self.descriptor()
-        print stringToSign
+#         print stringToSign
         key = cred.secret_key.encode("utf-8")
         hasher = hmac.new(key, stringToSign.encode("utf-8"), hashlib.sha1)
         sign = b64encode(hasher.digest())[5:15]     #ssig
@@ -307,12 +307,18 @@ class SCSRequest(object):
         else:
             data = self.data
             
-        print self.headers
+        #http method 是GET时，不适用https方式请求
+        if self.method.lower() == 'get' and bucket.base_url.startswith('https://') :
+            bucket.base_url = 'http://'+bucket.base_url[8:]
+        
         return self.urllib_request_cls(self.method, self.url(bucket.base_url),
                                        data=data, headers=self.headers)
 
-    def url(self, base_url, arg_sep="&"):
-        url = base_url + "/"
+    def url(self, base_url, arg_sep="&", bucketAsDomain=False):
+        if bucketAsDomain:              #bucket name 作为域名
+            url = 'http://'+self.bucket
+        else:
+            url = base_url + "/"
         if self.key:
             url += aws_urlquote(self.key)
         if self.subresource or self.args:
@@ -450,11 +456,20 @@ class SCSBucket(object):
     n_retries = 10
 
     def __init__(self, name=None, base_url=None, timeout=None, secure=False):
-        if sinastorage.getDefaultAppInfo() is None :
-            raise ValueError("access_key and secret_key must not be None! Please set sinastorage.setDefaultAppInfo('access_key', 'secret_key') first!")
-        self.access_key = sinastorage.getDefaultAppInfo().access_key
-        self.secret_key = sinastorage.getDefaultAppInfo().secret_key
-        secure = sinastorage.getDefaultAppInfo().secure
+        if sinastorage.getDefaultAppInfo() is not None :
+            self.access_key = sinastorage.getDefaultAppInfo().access_key
+            self.secret_key = sinastorage.getDefaultAppInfo().secret_key
+            secure = sinastorage.getDefaultAppInfo().secure
+        else :
+            import os
+            if os.environ.has_key('S3_ACCESS_KEY_ID') and os.environ.has_key('S3_SECRET_ACCESS_KEY'):
+                self.access_key = os.environ.get('S3_ACCESS_KEY_ID')
+                self.secret_key = os.environ.get('S3_SECRET_ACCESS_KEY')
+                secure = True
+            else:
+                raise ValueError("access_key and secret_key must not be None! \n\
+                Please set sinastorage.setDefaultAppInfo('access_key', 'secret_key') \n\
+                or set S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY in Environment first!")
         
         scheme = ("http", "https")[int(bool(secure))]
         if not base_url:
@@ -659,8 +674,7 @@ class SCSBucket(object):
         scsreq = self.request(method="PUT", key=key, headers=headers,subresource='relax')
         return self.send(scsreq).close()
         
-    def update_meta(self, key, metadata={}, remove_metadata=[], acl=None, 
-                    mimetype=None, headers={}):
+    def update_meta(self, key, metadata={}, acl=None, mimetype=None, headers={}):
         '''
             更新文件meta信息
             删除meta功能暂时不可用
@@ -671,7 +685,7 @@ class SCSBucket(object):
         elif "Content-Type" not in headers:
             headers["Content-Type"] = guess_mimetype(key)
         headers.update(metadata_headers(metadata))
-        headers.update(metadata_remove_headers(remove_metadata))
+#         headers.update(metadata_remove_headers(remove_metadata))
         if acl: headers["X-AMZ-ACL"] = acl
         if "Content-Length" not in headers:
             headers["Content-Length"] = 0
@@ -695,7 +709,7 @@ class SCSBucket(object):
         scsResponse.close()
         return aclResult
     
-    def update_acl(self, key, acl={}, mimetype=None, headers={}):
+    def update_acl(self, key, acl={}):
         '''
             设置文件、bucket的acl
             组：
@@ -715,11 +729,8 @@ class SCSBucket(object):
                 'GRPS0000000CANONICAL' :  [ "read", "read_acp" , "write", "write_acp" ],
             }
         '''
-        headers = headers.copy()
-        if mimetype:
-            headers["Content-Type"] = str(mimetype)
-        elif "Content-Type" not in headers:
-            headers["Content-Type"] = 'text/json'
+        headers = {}
+        headers["Content-Type"] = 'text/json'
         aclJson = json.dumps(acl)
         if "Content-Length" not in headers:
             headers["Content-Length"] = str(len(aclJson))
@@ -808,12 +819,12 @@ class SCSBucket(object):
             entry = (item['Name'],rfc822_parsedate(item['CreationDate']))
             yield entry
 
-    def make_url(self, key, args=None, arg_sep="&"):
+    def make_url(self, key, args=None, arg_sep="&", bucketAsDomain=False):
         scsreq = self.request(key=key, args=args)
-        return scsreq.url(self.base_url, arg_sep=arg_sep)
+        return scsreq.url(self.base_url, arg_sep=arg_sep, bucketAsDomain=bucketAsDomain)
 
     def make_url_authed(self, key, expire=datetime.timedelta(minutes=5), 
-                        ip=None, cheese=None, fn=None):
+                        ip=None, bucketAsDomain=False):
         """Produce an authenticated URL for scs object *key*.
 
         *expire* is a delta or a datetime on which the authenticated URL
@@ -832,12 +843,8 @@ class SCSBucket(object):
                       "ssig": sign}
         if ip:
             args_list['ip'] = ip
-        if cheese:
-            args_list['cheese'] = cheese
-        if fn:
-            args_list['fn'] = fn
         scsreq.args = args_list.items()
-        return scsreq.url(self.base_url, arg_sep="&")
+        return scsreq.url(self.base_url, arg_sep="&", bucketAsDomain=bucketAsDomain)
 
     def url_for(self, key, authenticated=False,
                 expire=datetime.timedelta(minutes=5)):
@@ -850,23 +857,27 @@ class SCSBucket(object):
             warnings.warn(dep_cls(msg % ("make_url", False)))
             return self.make_url(key)
 
-    def put_bucket(self, config_xml=None, acl=None):
-        if config_xml:
-            if isinstance(config_xml, unicode):
-                config_xml = config_xml.encode("utf-8")
-            headers = {"Content-Length": len(config_xml),
-                       "Content-Type": "text/xml"}
-        else:
-            headers = {"Content-Length": "0"}
+    def put_bucket(self,  acl=None):
+        headers = {"Content-Length": "0"}
         if acl:
             headers["X-AMZ-ACL"] = acl
-        scsResponse = self.send(self.request(method="PUT", key=None,
-                                      data=config_xml, headers=headers))
+        scsResponse = self.send(self.request(method="PUT", key=None, headers=headers))
         return scsResponse.close()
 
     def delete_bucket(self):
         return self.delete(None)
-        
+    
+    '''
+    判断bucket是否存在
+    '''
+    def exist(self):
+        if self.name is None:
+            raise RuntimeError("bucket name must be set!!")
+        try:
+            self.listdir(limit=1)
+            return True
+        except KeyNotFound:
+            return False
         
     '''
     multiple upload
