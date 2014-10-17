@@ -6,9 +6,12 @@ python:
   # - "3.3"
   # - "pypy"
 # command to install dependencies
-install: "pip install -r requirements.txt"
+install: 
+  - pip install .
+  - pip install coveralls
 # command to run tests
-script: nosetests
+script:
+  - nosetests --with-coverage
 after_success:  
   coveralls
 env:
