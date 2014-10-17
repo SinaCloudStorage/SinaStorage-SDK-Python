@@ -9,3 +9,4 @@ dist/
 scs_sdk.egg-info/
 scs.egg-info/
 UNKNOWN.egg-info/
+py_test_file.downloaded
