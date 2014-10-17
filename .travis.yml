@@ -1,0 +1,14 @@
+language: python
+jdk:
+- "2.6"
+- "2.7"
+- "3.2"
+- "3.3"
+- "pypy"
+# command to install dependencies
+install: "pip install -r requirements.txt"
+# command to run tests
+# script: nosetests
+# env:
+#   - S3_ACCESS_KEY_ID=
+#   - S3_SECRET_ACCESS_KEY=
