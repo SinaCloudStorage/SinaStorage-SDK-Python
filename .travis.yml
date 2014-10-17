@@ -10,5 +10,4 @@ install: "pip install -r requirements.txt"
 # command to run tests
 script: nosetests
 env:
-  - S3_ACCESS_KEY_ID=sandbox0000000000001
-  - S3_SECRET_ACCESS_KEY=bf71cc799349ea62df7e849091c2ea5258782211
+  - S3_ACCESS_KEY_ID=sandbox0000000000001 S3_SECRET_ACCESS_KEY=bf71cc799349ea62df7e849091c2ea5258782211
