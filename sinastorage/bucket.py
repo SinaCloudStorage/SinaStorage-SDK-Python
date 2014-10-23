@@ -316,9 +316,14 @@ class SCSRequest(object):
 
     def url(self, base_url, arg_sep="&", bucketAsDomain=False):
         if bucketAsDomain:              #bucket name 作为域名
-            url = 'http://'+self.bucket
+            url = 'http://'+self.bucket + "/"
         else:
             url = base_url + "/"
+            
+        #生成url，不适用https方式请求
+        if url.startswith('https://') :
+            url = 'http://'+url[8:]
+            
         if self.key:
             url += aws_urlquote(self.key)
         if self.subresource or self.args:
