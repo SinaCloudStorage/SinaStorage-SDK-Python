@@ -20,8 +20,6 @@ from sinastorage.utils import (_amz_canonicalize, metadata_headers, metadata_rem
                     rfc822_fmtdate, aws_md5, aws_urlquote, guess_mimetype, 
                     info_dict, expire2datetime, getSize, rfc822_parsedate, FileWithCallback)
 
-from sinastorage.multipart import MultipartUpload,Part,FileChunkWithCallback
-
 sinastorage_domain = "sinacloud.net"
 
 class ACL(object):
@@ -123,7 +121,7 @@ class AnyMethodRequest(urllib2.Request):
 def _upload_part(bucket_name, key_name, upload_id, parts_amount, part, source_path, offset, 
                  chunk_bytes, cb, num_cb, amount_of_retries=0, debug=1):
     from filechunkio import FileChunkIO
-      
+    from sinastorage.multipart import FileChunkWithCallback
     """
     Uploads a part with retries.
     """
@@ -910,6 +908,7 @@ class SCSBucket(object):
         scsResponse = self.send(scsreq)
         initMultipartUploadResult = json.loads(scsResponse.read())
         scsResponse.close()
+        from sinastorage.multipart import MultipartUpload
         multipart = MultipartUpload(self)
         multipart.upload_id = initMultipartUploadResult["UploadId"]
         multipart.bucket_name = initMultipartUploadResult["Bucket"]
