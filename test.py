@@ -59,11 +59,11 @@ class Test(unittest.TestCase):
     def test_list_bucket(self):
         scs = SCSBucket()
         bucket_gen = scs.list_buckets()
-        self.assertIsNotNone(bucket_gen, 'List bucket result is None')
+        self.assertTrue(bucket_gen is not None, 'List bucket result is None')
         for bucket in bucket_gen:
             bucketStr = str(bucket)
-            self.assertIsNotNone(bucket[0], 'bucket:%s name is None'%bucketStr)
-            self.assertIsNotNone(bucket[1], 'bucket:%s CreationDate is None'%bucketStr)
+            self.assertTrue(bucket[0] is not None, 'bucket:%s name is None'%bucketStr)
+            self.assertTrue(bucket[1] is not None, 'bucket:%s CreationDate is None'%bucketStr)
          
          
     def test_remove_bucket(self):
@@ -85,18 +85,18 @@ class Test(unittest.TestCase):
      
         file_gen = scs.listdir()
          
-        self.assertIsNotNone(file_gen, 'List bucket files result is None')
+        self.assertTrue(file_gen is not None, 'List bucket files result is None')
         for item in file_gen:
             #(name, isPrefix, sha1, expiration_time, modify, owner, md5, content_type, size)
-            self.assertIsNotNone(item[0], 'file name is None')
-            self.assertIsNotNone(item[1], 'file isPrefix is None')
-            self.assertIsNotNone(item[2], 'file sha1 is None')
+            self.assertTrue(item[0] is not None, 'file name is None')
+            self.assertTrue(item[1] is not None, 'file isPrefix is None')
+            self.assertTrue(item[2] is not None, 'file sha1 is None')
 #             self.assertIsNotNone(item[3], 'file expiration_time is None')
-            self.assertIsNotNone(item[4], 'file modify is None')
-            self.assertIsNotNone(item[5], 'file owner is None')
-            self.assertIsNotNone(item[6], 'file md5 is None')
-            self.assertIsNotNone(item[7], 'file content_type is None')
-            self.assertIsNotNone(item[8], 'file size is None')
+            self.assertTrue(item[4] is not None, 'file modify is None')
+            self.assertTrue(item[5] is not None, 'file owner is None')
+            self.assertTrue(item[6] is not None, 'file md5 is None')
+            self.assertTrue(item[7] is not None, 'file content_type is None')
+            self.assertTrue(item[8] is not None, 'file size is None')
          
     def test_list_bucket_file_by_conditions(self):
         scs = SCSBucket(self.bucket_name)
@@ -107,19 +107,19 @@ class Test(unittest.TestCase):
      
         file_gen = scs.listdir(prefix=self.object_key, limit=1)
          
-        self.assertIsNotNone(file_gen, 'List bucket files result is None')
+        self.assertTrue(file_gen is not None, 'List bucket files result is None')
         self.assertTrue(file_gen.contents_quantity==1, 'The result length is not equal 1')
         for item in file_gen:
             #(name, isPrefix, sha1, expiration_time, modify, owner, md5, content_type, size)
-            self.assertIsNotNone(item[0], 'file name is None')
-            self.assertIsNotNone(item[1], 'file isPrefix is None')
-            self.assertIsNotNone(item[2], 'file sha1 is None')
+            self.assertTrue(item[0] is not None, 'file name is None')
+            self.assertTrue(item[1] is not None, 'file isPrefix is None')
+            self.assertTrue(item[2] is not None, 'file sha1 is None')
 #             self.assertIsNotNone(item[3], 'file expiration_time is None')
-            self.assertIsNotNone(item[4], 'file modify is None')
-            self.assertIsNotNone(item[5], 'file owner is None')
-            self.assertIsNotNone(item[6], 'file md5 is None')
-            self.assertIsNotNone(item[7], 'file content_type is None')
-            self.assertIsNotNone(item[8], 'file size is None')
+            self.assertTrue(item[4] is not None, 'file modify is None')
+            self.assertTrue(item[5] is not None, 'file owner is None')
+            self.assertTrue(item[6] is not None, 'file md5 is None')
+            self.assertTrue(item[7] is not None, 'file content_type is None')
+            self.assertTrue(item[8] is not None, 'file size is None')
          
      
     def test_get_bucket_meta(self):
@@ -135,8 +135,8 @@ class Test(unittest.TestCase):
         self.assertTrue(ACL.ACL_WRITE in metaResult['ACL'][ACL.ACL_GROUP_ANONYMOUSE], 'The bucket:%s acl GRPS000000ANONYMOUSE group hasn\'t write right'%self.bucket_name)
          
         self.assertEqual(self.bucket_name, metaResult['Project'], 'The metaResult[\'Project\'] is not equal %s'%self.bucket_name)
-        self.assertIsNotNone(metaResult['Owner'], 'The metaResult[\'Owner\'] is None')
-        self.assertIsNotNone(metaResult['Last-Modified'], 'The metaResult[\'Last-Modified\'] is None')
+        self.assertTrue(metaResult['Owner'] is not None, 'The metaResult[\'Owner\'] is None')
+        self.assertTrue(metaResult['Last-Modified'] is not None, 'The metaResult[\'Last-Modified\'] is None')
  
  
     def test_put_content(self):
@@ -344,9 +344,9 @@ class Test(unittest.TestCase):
          
         self.assertEqual(self.object_key, metaResult['File-Name'], 'The meta[\'File-Name\'] is not equals '+self.object_key)
         self.assertEqual(mimetype, metaResult['Type'], 'The meta[\'Type\'] is not equals '+mimetype)
-        self.assertIsNotNone(metaResult['Content-SHA1'], 'The meta[\'Content-SHA1\'] is None')
-        self.assertIsNotNone(metaResult['Content-MD5'], 'The meta[\'Content-MD5\'] is None')
-        self.assertIsNotNone(metaResult['Owner'], 'The meta[\'Owner\'] is None')
+        self.assertTrue(metaResult['Content-SHA1'] is not None, 'The meta[\'Content-SHA1\'] is None')
+        self.assertTrue(metaResult['Content-MD5'] is not None, 'The meta[\'Content-MD5\'] is None')
+        self.assertTrue(metaResult['Owner'] is not None, 'The meta[\'Owner\'] is None')
          
         self.assertTrue('x-amz-meta-author' in metaResult['File-Meta'], 'File-Meta dose not contains x-amz-meta-author key')
         self.assertEqual(metadata['author'], metaResult['File-Meta']['x-amz-meta-author'], 'The metaResult[\'File-Meta\'][\'x-amz-meta-author\'] value is not match')
