@@ -7,12 +7,13 @@ import hashlib
 import datetime
 import mimetypes
 from base64 import b64encode
-from urllib import quote
+# from urllib import quote
+from sinastorage.compat import urllib
 from calendar import timegm
 import os,time
 # from bucket import ManualCancel
-import bucket
-
+# import bucket
+from sinastorage.compat import six
 
 def _amz_canonicalize(headers):
     r"""Canonicalize AMZ headers in that certain AWS way.
@@ -32,7 +33,7 @@ def _amz_canonicalize(headers):
         这里的所有header名需要转换成小写，并按header名进行排序，过滤掉空格，并加以’\n’进行连接
     '''
     rv = {}
-    for header, value in headers.iteritems():
+    for header, value in six.iteritems(headers):
         header = header.lower()
 #         if header.startswith("x-amz-"):  #edit by hanchao
         if header.startswith("x-amz-") or header.startswith("x-sina-"):
@@ -43,13 +44,13 @@ def _amz_canonicalize(headers):
     return "".join(parts)
 
 def metadata_headers(metadata):
-    return dict(("X-AMZ-Meta-" + h, v) for h, v in metadata.iteritems())
+    return dict(("X-AMZ-Meta-" + h, v) for h, v in six.iteritems(metadata))
 
 def metadata_remove_headers(metadata_key):
     return dict(("x-amz-remove-meta-"+k,'') for k in metadata_key)
 
 def headers_metadata(headers):
-    return dict((h[11:], v) for h, v in headers.iteritems()
+    return dict((h[11:], v) for h, v in six.iteritems(headers)
                             if h.lower().startswith("x-amz-meta-"))
 
 iso8601_fmt = '%Y-%m-%dT%H:%M:%S.000Z'
@@ -126,8 +127,8 @@ def aws_md5(data):
         data.seek(0)
     else:
         hasher.update(data)
-        
-    return hasher.hexdigest().decode("ascii")#hex(hasher.digest()).decode("ascii")
+    
+    return hasher.hexdigest()#.decode("ascii")#hex(hasher.digest()).decode("ascii")
 
 def aws_urlquote(value):
     r"""AWS-style quote a URL part.
@@ -135,9 +136,9 @@ def aws_urlquote(value):
     >>> aws_urlquote("/bucket/a key")
     '/bucket/a%20key'
     """
-    if isinstance(value, unicode):
+    if isinstance(value, six.text_type):
         value = value.encode("utf-8")
-    return quote(value, "/")
+    return urllib.parse.quote(value, "/")
 
 def guess_mimetype(fn, default="application/octet-stream"):
     """Guess a mimetype from filename *fn*.
@@ -154,10 +155,11 @@ def guess_mimetype(fn, default="application/octet-stream"):
     try:
         content_type = mimetypes.guess_type(bfn + "." + ext)[0]
         return content_type if content_type is not None else default
-    except Exception, e:
+    except Exception as e:
         return default
 
 def info_dict(headers):
+    headers = dict((str(k.lower()), str(v)) for (k,v) in headers.items() if headers and hasattr(headers, 'items'))
     rv = {"headers": headers, "metadata": headers_metadata(headers)}
     if "content-length" in headers:
         rv["size"] = int(headers["content-length"])
@@ -217,31 +219,71 @@ def name(o):
 def getSize(filename):
     st = os.stat(filename)#.st_size
     return st.st_size
-    
-class FileWithCallback(file):
-    def __init__(self, path, mode, callback, *args):
-        file.__init__(self, path, mode)
-        self.seek(0, os.SEEK_END)
-        self._total = self.tell()
-        self.seek(0)
+
+from io import FileIO
+
+class FileWithCallback(FileIO):
+    def __init__(self, name, mode='r', callback=None, cb_args=(), cb_kwargs={}):
         self._callback = callback
-        self._args = args
-        self.lastTimestamp = time.time()
-        self.received = 0
+        self._cb_args = cb_args
+        self._cb_kwargs = cb_kwargs
+        self._progress = 0
+        super(FileWithCallback, self).__init__(name, mode, closefd=True)
+        self.seek(0, os.SEEK_END)
+        self._len = self.tell()
+        self.seek(0)
         
-        self.cancelRead = False
-
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, type, value, trace):
+        self.close()
+        
+    def name(self):
+        return self.buf.name
+        
     def __len__(self):
-        return self._total
+        return self._len
 
-    def read(self, size):
-        if self.cancelRead :
-            raise bucket.ManualCancel('operation abort')
-        data = file.read(self, size)
-        self.received += len(data)
-        if self._callback and (time.time() - self.lastTimestamp >= 1.0):
-            self._callback(self._total, self.received, *self._args)
-            self.lastTimestamp = time.time()
-            self.received = 0
-            
-        return data
+    def read(self, n=-1):
+        chunk = super(FileWithCallback, self).read(n)
+        self._progress += int(len(chunk))
+        self._cb_kwargs.update({'size':self._len, 'progress':self._progress})
+        if self._callback:
+            try:
+                self._callback(*self._cb_args, **self._cb_kwargs)
+            except:
+                from sinastorage.bucket import ManualCancel
+                raise ManualCancel('operation abort')
+        
+        return chunk
+        
+
+
+# class FileWithCallback(file):
+#     def __init__(self, path, mode, callback, *args):
+#         file.__init__(self, path, mode)
+#         self.seek(0, os.SEEK_END)
+#         self._total = self.tell()
+#         self.seek(0)
+#         self._callback = callback
+#         self._args = args
+#         self.lastTimestamp = time.time()
+#         self.received = 0
+#         
+#         self.cancelRead = False
+# 
+#     def __len__(self):
+#         return self._total
+# 
+#     def read(self, size):
+#         if self.cancelRead :
+#             raise bucket.ManualCancel('operation abort')
+#         data = file.read(self, size)
+#         self.received += len(data)
+#         if self._callback and (time.time() - self.lastTimestamp >= 1.0):
+#             self._callback(self._total, self.received, *self._args)
+#             self.lastTimestamp = time.time()
+#             self.received = 0
+#             
+#         return data

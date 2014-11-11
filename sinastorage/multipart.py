@@ -6,7 +6,7 @@ Created on 2014年4月29日
 from filechunkio import FileChunkIO
 import time
 
-import bucket
+from . import bucket
 
 class Part(object):
     ''' 分片对象 '''

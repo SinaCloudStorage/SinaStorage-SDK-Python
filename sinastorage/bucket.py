@@ -6,12 +6,14 @@ from __future__ import absolute_import
 import time
 import hmac
 import hashlib
-import httplib
-import urllib2
+# import httplib
+# import urllib2
+from sinastorage.compat import six, StringIO, urllib, http_client
+
 import datetime
 import warnings
 from contextlib import contextmanager
-from urllib import quote_plus
+# from urllib import quote_plus
 from base64 import b64encode
 import json
 import sinastorage
@@ -47,7 +49,7 @@ class SCSError(Exception):
         rv = self.msg
         if self.extra:
             rv += " ("
-            rv += ", ".join("%s=%r" % i for i in self.extra.iteritems())
+            rv += ", ".join("%s=%r" % i for i in six.iteritems(self.extra))
             rv += ")"
         return rv
 
@@ -73,7 +75,7 @@ class SCSError(Exception):
             # as in chunked mode, but SCS gives an empty reply.
             try:
                 self.data = data = self.fp.read()
-            except (httplib.HTTPException, urllib2.URLError, ), e:
+            except (http_client.HTTPException, urllib.error.URLError, ) as e:
                 self.extra["read_error"] = e
                 self.data = u'%s'%self.extra['reason']
             else:
@@ -81,9 +83,10 @@ class SCSError(Exception):
                 try:
                     msgJsonDict = json.loads(data)
                     self.msg = msgJsonDict['Message']
-                except Exception, e:
+                except Exception as e:
                     self.data = u'%s'%self.extra['reason']
-                    print e
+#                     print e
+                    six.print_(e)
         else:
             self.data = u'%s'%self.extra['reason']
         return self
@@ -104,16 +107,16 @@ class BadRequest(SCSError, KeyError):
     @property
     def key(self): return self.extra.get("key")
 
-class StreamHTTPHandler(urllib2.HTTPHandler):
+class StreamHTTPHandler(urllib.request.HTTPHandler):
     pass
 
-class StreamHTTPSHandler(urllib2.HTTPSHandler):
+class StreamHTTPSHandler(urllib.request.HTTPSHandler):
     pass
 
-class AnyMethodRequest(urllib2.Request):
+class AnyMethodRequest(urllib.request.Request):
     def __init__(self, method, *args, **kwds):
         self.method = method
-        urllib2.Request.__init__(self, *args, **kwds)
+        urllib.request.Request.__init__(self, *args, **kwds)
 
     def get_method(self):
         return self.method
@@ -126,12 +129,14 @@ def _upload_part(bucket_name, key_name, upload_id, parts_amount, part, source_pa
     Uploads a part with retries.
     """
     if debug == 1:
-        print "_upload_part(%s, %s, %s, %s, %s)" % (source_path, offset, bytes, upload_id, part.part_num)
+#         print "_upload_part(%s, %s, %s, %s, %s)" % (source_path, offset, bytes, upload_id, part.part_num)
+        six.print_("_upload_part(%s, %s, %s, %s, %s)" % (source_path, offset, bytes, upload_id, part.part_num))
   
     def _upload(retries_left=amount_of_retries):
         try:
             if debug == 1:
-                print 'Start uploading part #%d ...' % part.part_num
+#                 print 'Start uploading part #%d ...' % part.part_num
+                six.print_('Start uploading part #%d ...' % part.part_num)
               
             bucket = SCSBucket(bucket_name)
               
@@ -148,17 +153,20 @@ def _upload_part(bucket_name, key_name, upload_id, parts_amount, part, source_pa
                 part.etag = scsResponse.urllib2Response.info().getheader('ETag')
                 if num_cb:num_cb(upload_id, parts_amount, part)
                 return part
-        except Exception, exc:
+        except Exception as exc:
             raise exc
             if retries_left:
                 return _upload(retries_left=retries_left - 1)
             else:
-                print 'Failed uploading part #%d' % part.part_num
-                print exc
+#                 print 'Failed uploading part #%d' % part.part_num
+                six.print_('Failed uploading part #%d' % part.part_num)
+#                 print exc
+                six.print_(exc)
                 raise exc
         else:
             if debug == 1:
-                print '... Uploaded part #%d' % part.part_num
+#                 print '... Uploaded part #%d' % part.part_num
+                six.print_('... Uploaded part #%d' % part.part_num)
   
     return _upload()
 
@@ -201,16 +209,19 @@ def _upload_part_by_fileWithCallback(bucket_name, key_name, upload_id, parts_amo
             part.response = scsResponse
             if num_cb:num_cb(upload_id, parts_amount, part)
             return part
-        except Exception, exc:
+        except Exception as exc:
             raise exc
             if retries_left:
                 return _upload(retries_left=retries_left - 1)
             else:
-                print 'Failed uploading part #%d' % part.part_num
-                print exc
+#                 print 'Failed uploading part #%d' % part.part_num
+                six.print_('Failed uploading part #%d' % part.part_num)
+#                 print exc
+                six.print_(exc)
                 raise exc
         else:
-            print '... Uploaded part #%d' % part.part_num
+#             print '... Uploaded part #%d' % part.part_num
+            six.print_('... Uploaded part #%d' % part.part_num)
 
     return _upload()
 
@@ -268,7 +279,7 @@ class SCSRequest(object):
                 res += "?%s" % aws_urlquote(self.subresource)
         if self.args:
             rv = {}
-            for key, value in self.args.iteritems():
+            for key, value in six.iteritems(self.args):
 #                 key = key.lower()
                 if key in self.subresource_kv_need_to_sign:
                     rv[key] = value
@@ -286,10 +297,9 @@ class SCSRequest(object):
             http://sinastorage.sinaapp.com/developer/interface/aws/auth.html
         '''
         stringToSign = self.descriptor()
-#         print stringToSign
         key = cred.secret_key.encode("utf-8")
         hasher = hmac.new(key, stringToSign.encode("utf-8"), hashlib.sha1)
-        sign = b64encode(hasher.digest())[5:15]     #ssig
+        sign = (b64encode(hasher.digest())[5:15]).decode("utf-8")     #ssig
         '''
             Authorization=SINA product:/PL3776XmM
             Authorization:"SINA"+" "+"accessKey":"ssig"
@@ -330,9 +340,9 @@ class SCSRequest(object):
                 ps.append(self.subresource)
             if self.args:
                 args = self.args
-                if hasattr(args, "iteritems"):
-                    args = args.iteritems()
-                args = ((quote_plus(k), quote_plus(v)) for (k, v) in args)
+                if hasattr(args, "iteritems") or hasattr(args, "items"):
+                    args = six.iteritems(args)
+                args = ((urllib.parse.quote_plus(k), urllib.parse.quote_plus(v)) for (k, v) in args)
                 args = arg_sep.join("%s=%s" % i for i in args)
                 ps.append(args)
             url += "?" + "&".join(ps)
@@ -423,7 +433,12 @@ class SCSResponse(object):
 #         self.responseBody = responseBody
         self._responseBody = None
         
-        self.responseHeaders = dict(self.urllib2Response.info()) if hasattr(self.urllib2Response,'info') else []
+#         self.responseHeaders = dict(self.urllib2Response.info()) if hasattr(self.urllib2Response,'info') else []
+
+#         dict((str(k), str(v)) for (k, v) in m if v is not None)
+#         print '------------',self.urllib2Response.info()
+        self.responseHeaders = {}
+        self.responseHeaders = dict((str(k.lower()), str(v)) for (k,v) in self.urllib2Response.info().items() if hasattr(self.urllib2Response,'info'))
         
     def read(self, CHUNK=0):
         try:
@@ -432,12 +447,12 @@ class SCSResponse(object):
             else:
                 chunk = self.urllib2Response.read()
                 
-            if 'content-type' in self.responseHeaders and cmp('application/json',self.responseHeaders['content-type']) == 0 and self._responseBody is None:
-                self._responseBody = chunk
+            if 'content-type' in self.responseHeaders and 'application/json'==self.responseHeaders['content-type'] and self._responseBody is None:
+                self._responseBody = chunk.decode("utf-8")
             
-            return chunk
-        except Exception , e:
-                print e
+            return chunk.decode("utf-8")
+        except Exception as e:
+            raise e
     
     def close(self):
         self.read()
@@ -449,7 +464,7 @@ class SCSResponse(object):
     
     @property
     def responseBody(self):
-        if 'content-type' in self.responseHeaders and cmp('application/json',self.responseHeaders['content-type']) == 0 and self._responseBody is None:
+        if 'content-type' in self.responseHeaders and 'application/json'==self.responseHeaders['content-type'] and self._responseBody is None:
             return self.read()
         else:
             return self._responseBody
@@ -465,7 +480,7 @@ class SCSBucket(object):
             secure = sinastorage.getDefaultAppInfo().secure
         else :
             import os
-            if os.environ.has_key('S3_ACCESS_KEY_ID') and os.environ.has_key('S3_SECRET_ACCESS_KEY'):
+            if 'S3_ACCESS_KEY_ID' in os.environ and 'S3_SECRET_ACCESS_KEY' in os.environ:
                 self.access_key = os.environ.get('S3_ACCESS_KEY_ID')
                 self.secret_key = os.environ.get('S3_SECRET_ACCESS_KEY')
                 secure = True
@@ -522,7 +537,7 @@ class SCSBucket(object):
 
     @classmethod
     def build_opener(cls):
-        return urllib2.build_opener(StreamHTTPHandler, StreamHTTPSHandler)
+        return urllib.request.build_opener(StreamHTTPHandler, StreamHTTPSHandler)
 
     def request(self, *a, **k):
         k.setdefault("bucket", self.name)
@@ -530,7 +545,7 @@ class SCSBucket(object):
 
     def send(self, scsreq):
         scsreq.sign(self)
-        for retry_no in xrange(self.n_retries):
+        for retry_no in range(self.n_retries):
             req = scsreq.urllib(self)
             try:
                 if self.timeout:
@@ -540,7 +555,7 @@ class SCSBucket(object):
                 
                 return SCSResponse(req, response)
 
-            except (urllib2.HTTPError, urllib2.URLError, ManualCancel), e:
+            except (urllib.error.HTTPError, urllib.error.URLError, ManualCancel) as e:
                 if isinstance(e, ManualCancel):     #手动取消
                     e.urllib2Request = req
                     raise e
@@ -585,7 +600,7 @@ class SCSBucket(object):
 
     def put(self, key, data=None, acl=None, metadata={}, mimetype=None,
             transformer=None, headers={},args=None,subresource=None):
-        if isinstance(data, unicode):
+        if isinstance(data, six.text_type):
             data = data.encode(self.default_encoding)
         headers = headers.copy()
         if mimetype:
@@ -617,15 +632,15 @@ class SCSBucket(object):
             progressCallback    上传文件进度回调方法    _callback(self._total, len(data), *self._args)
         '''
         headers={}
-        f = file(fileWithCallback.name, 'rb')
+#         f = file(fileWithCallback.name, 'rb')
 #         headers["s-sina-sha1"] = aws_md5(f)
-        f.close()
+#         f.close()
         
         from email.utils import formatdate
         from calendar import timegm
         expireDate = expire2datetime(datetime.timedelta(minutes=60*24))
         expireDate =  formatdate(timegm(expireDate.timetuple()), usegmt=True)
-        headers['Date'] = expireDate
+        headers['Date'] = 'Tue, 11 Nov 2015 15:25:57 GMT'#expireDate
         
         return self.put(key=key, data=fileWithCallback, headers=headers)
     
@@ -635,9 +650,8 @@ class SCSBucket(object):
             filePath            本地文件路径
             progressCallback    上传文件进度回调方法    _callback(self._total, len(data), *self._args)
         '''
-        f = file(filePath, 'rb')
-        headers["s-sina-sha1"] = aws_md5(f)
-        f.close()
+        with open(filePath, 'rb') as fp:
+            headers["s-sina-sha1"] = aws_md5(fp)
         
         from email.utils import formatdate
         from calendar import timegm
@@ -646,8 +660,12 @@ class SCSBucket(object):
     
         headers['Date'] = expireDate
         
-        fileWithCallback = FileWithCallback(filePath, 'rb', progressCallback)
-        return self.put(key, fileWithCallback, acl, metadata, mimetype, transformer, headers, args, subresource)
+#         with open(filePath, 'rb') as fp:
+#             fileWithCallback = FileWithCallback(fp, progressCallback)
+#             return self.put(key, fileWithCallback, acl, metadata, mimetype, transformer, headers, args, subresource)
+#         fileWithCallback = FileWithCallback(filePath, 'rb', progressCallback)
+        with FileWithCallback(filePath, 'rb', progressCallback) as fileWithCallback:
+            return self.put(key, fileWithCallback, acl, metadata, mimetype, transformer, headers, args, subresource)
                
     def put_relax(self,key,sina_sha1, s_sina_length, acl=None, 
                   metadata={}, mimetype=None,headers={}):
@@ -655,8 +673,8 @@ class SCSBucket(object):
             上传接口Relax
             REST型PUT上传，但不上传具体的文件内容。而是通过SHA-1值对系统内文件进行复制。
         '''
-        if isinstance(sina_sha1, unicode):
-            sina_sha1 = sina_sha1.encode(self.default_encoding)
+#         if isinstance(sina_sha1, six.text_type):
+#             sina_sha1 = sina_sha1.encode(self.default_encoding)
         headers = headers.copy()
         if mimetype:
             headers["Content-Type"] = str(mimetype)
@@ -734,7 +752,7 @@ class SCSBucket(object):
         '''
         headers = {}
         headers["Content-Type"] = 'text/json'
-        aclJson = json.dumps(acl)
+        aclJson = bytes(json.dumps(acl)) 
         if "Content-Length" not in headers:
             headers["Content-Length"] = str(len(aclJson))
         scsreq = self.request(method="PUT", key=key, data=aclJson, headers=headers, subresource='acl')
@@ -746,7 +764,7 @@ class SCSBucket(object):
         try:
             scsResponse = self.send(self.request(method="DELETE", key=key))
             return True
-        except KeyNotFound, e:
+        except KeyNotFound as e:
             e.fp.close()
             return False
         else:
@@ -1014,7 +1032,8 @@ class SCSBucket(object):
 #             key.set_acl(acl)
         else:
 #             mp.cancel_upload()
-            print  len(multipart.parts) , chunk_amount
+#             print  len(multipart.parts) , chunk_amount
+            six.print_(len(multipart.parts) , chunk_amount)
 
             raise RuntimeError("multipart upload is failed!!")
         

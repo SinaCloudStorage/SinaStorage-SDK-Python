@@ -9,7 +9,8 @@ Usage::
 """
 
 import os
-import urllib2
+# import urllib2
+from sinastorage.compat import six, StringIO, urllib, http_client
 from sinastorage.bucket import SCSBucket
 
 class ProgressCallingFile(object):
@@ -90,7 +91,7 @@ else:
     class PosterStreamingMixin(StreamingMixin):
         @classmethod
         def build_opener(cls):
-            return urllib2.build_opener(StreamingHTTPHandler)
+            return urllib.request.build_opener(StreamingHTTPHandler)
 
     default_stream_mixin = PosterStreamingMixin
 
