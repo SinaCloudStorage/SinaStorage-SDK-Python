@@ -430,15 +430,11 @@ class SCSResponse(object):
     def __init__(self, urllib2Request, urllib2Response):
         self.urllib2Request = urllib2Request
         self.urllib2Response = urllib2Response
-#         self.responseBody = responseBody
         self._responseBody = None
         
-#         self.responseHeaders = dict(self.urllib2Response.info()) if hasattr(self.urllib2Response,'info') else []
-
-#         dict((str(k), str(v)) for (k, v) in m if v is not None)
-#         print '------------',self.urllib2Response.info()
         self.responseHeaders = {}
-        self.responseHeaders = dict((str(k.lower()), str(v)) for (k,v) in self.urllib2Response.info().items() if hasattr(self.urllib2Response,'info'))
+        if self.urllib2Response is not None and hasattr(self.urllib2Response,'info'):
+            self.responseHeaders = dict((str(k.lower()), str(v)) for (k,v) in self.urllib2Response.info().items())
         
     def read(self, CHUNK=0):
         try:
@@ -446,11 +442,13 @@ class SCSResponse(object):
                 chunk =  self.urllib2Response.read(CHUNK)
             else:
                 chunk = self.urllib2Response.read()
-                
             if 'content-type' in self.responseHeaders and 'application/json'==self.responseHeaders['content-type'] and self._responseBody is None:
-                self._responseBody = chunk.decode("utf-8")
+                if not isinstance(chunk, six.text_type):
+                    self._responseBody = chunk.decode("utf-8")
+                else:
+                    self._responseBody = chunk
             
-            return chunk.decode("utf-8")
+            return chunk
         except Exception as e:
             raise e
     
@@ -857,7 +855,10 @@ class SCSBucket(object):
         expire = expire2datetime(expire)
         expire = time.mktime(expire.timetuple()[:9])
         expire = str(int(expire))
-        scsreq = self.request(key=key, headers={"Date": expire})
+        args = None
+        if ip:
+            args = {'ip':ip}
+        scsreq = self.request(key=key, headers={"Date": expire}, args=args)
         sign = scsreq.sign(self)
         args_list = {"KID": 'sina,%s'%self.access_key,
                       "Expires": expire,
