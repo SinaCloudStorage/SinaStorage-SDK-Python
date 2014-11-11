@@ -123,7 +123,7 @@ class AnyMethodRequest(urllib.request.Request):
 
 def _upload_part(bucket_name, key_name, upload_id, parts_amount, part, source_path, offset, 
                  chunk_bytes, cb, num_cb, amount_of_retries=0, debug=1):
-    from filechunkio import FileChunkIO
+    from sinastorage.vendored.filechunkio import FileChunkIO
     from sinastorage.multipart import FileChunkWithCallback
     """
     Uploads a part with retries.
@@ -187,7 +187,7 @@ def _upload_part(bucket_name, key_name, upload_id, parts_amount, part, source_pa
 def _upload_part_by_fileWithCallback(bucket_name, key_name, upload_id, parts_amount, part, 
                                      fileChunkWithCallback,
                                      num_cb, amount_of_retries=0):
-    from filechunkio import FileChunkIO
+    from sinastorage.vendored.filechunkio import FileChunkIO
     
     """
     Uploads a part with retries.
@@ -312,6 +312,8 @@ class SCSRequest(object):
             data = self.data
         elif hasattr(self.data,'fileno'):                                   #file like
             data = self.data
+        elif six.PY3 and isinstance(self.data, six.text_type):
+            data = bytes(self.data, 'utf-8')
         else:
             data = self.data
             
@@ -442,11 +444,13 @@ class SCSResponse(object):
                 chunk =  self.urllib2Response.read(CHUNK)
             else:
                 chunk = self.urllib2Response.read()
+                
             if 'content-type' in self.responseHeaders and 'application/json'==self.responseHeaders['content-type'] and self._responseBody is None:
                 if not isinstance(chunk, six.text_type):
                     self._responseBody = chunk.decode("utf-8")
                 else:
                     self._responseBody = chunk
+                return self._responseBody
             
             return chunk
         except Exception as e:
@@ -750,7 +754,7 @@ class SCSBucket(object):
         '''
         headers = {}
         headers["Content-Type"] = 'text/json'
-        aclJson = bytes(json.dumps(acl)) 
+        aclJson = json.dumps(acl)
         if "Content-Length" not in headers:
             headers["Content-Length"] = str(len(aclJson))
         scsreq = self.request(method="PUT", key=key, data=aclJson, headers=headers, subresource='acl')
@@ -979,7 +983,7 @@ class SCSBucket(object):
             import math
             import mimetypes
             from multiprocessing import Pool
-            from filechunkio import FileChunkIO
+            from sinastorage.vendored.filechunkio import FileChunkIO
             multipart_capable = True
             parallel_processes = 4
             min_bytes_per_chunk = 5 * 1024 * 1024                     #每片分片最大文件大小

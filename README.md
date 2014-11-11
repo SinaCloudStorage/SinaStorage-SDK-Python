@@ -11,8 +11,10 @@
 
 ##SDK 环境要求
 
-* Python 2.7 (暂不支持Python 3）
-* FileChunkIO
+* Python 2.6
+* Python 2.7
+* Python 3.3
+* Python 3.4
 
 
 ##SDK 安装

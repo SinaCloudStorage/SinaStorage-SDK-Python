@@ -6,8 +6,8 @@ python:
   - "3.4"  
 # command to install dependencies
 install: 
-  - pip install filechunkio
   - pip install coveralls
+#  - pip install filechunkio
 # command to run tests
 script:
   - nosetests --with-coverage

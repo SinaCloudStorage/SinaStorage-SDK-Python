@@ -151,10 +151,14 @@ class Test(unittest.TestCase):
         scsResponse = scs.get(self.object_key)
         CHUNK = 16 * 1024
         file_content = ''
+        from sinastorage.vendored import six
         while True:
             chunk = scsResponse.read(CHUNK)
             if not chunk: break
-            file_content += chunk
+            if isinstance(chunk, six.text_type):
+                file_content += chunk
+            else:
+                file_content += chunk.decode("utf-8")
         self.assertEqual(content, file_content, 'The uploaded file content is not match local.%s'%file_content)
   
     def test_put_content_with_conditions(self):
@@ -176,10 +180,14 @@ class Test(unittest.TestCase):
         scsResponse = scs.get(self.object_key)
         CHUNK = 16 * 1024
         file_content = ''
+        from sinastorage.vendored import six
         while True:
             chunk = scsResponse.read(CHUNK)
             if not chunk: break
-            file_content += chunk
+            if isinstance(chunk, six.text_type):
+                file_content += chunk
+            else:
+                file_content += chunk.decode("utf-8")
         #assert file_content
         self.assertEqual(content, file_content, 'The uploaded file content is not metch local.%s'%file_content)
         #assert metadata
@@ -215,10 +223,14 @@ class Test(unittest.TestCase):
         scsResponse = scs.get(self.object_key)
         CHUNK = 16 * 1024
         file_content = ''
+        from sinastorage.vendored import six
         while True:
             chunk = scsResponse.read(CHUNK)
             if not chunk: break
-            file_content += chunk
+            if isinstance(chunk, six.text_type):
+                file_content += chunk
+            else:
+                file_content += chunk.decode("utf-8")
         #assert file_content
 #         self.assertEqual(content, file_content, 'The uploaded file content is not metch local.%s'%file_content)
         #assert metadata

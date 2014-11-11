@@ -239,8 +239,8 @@ class FileWithCallback(FileIO):
     def __exit__(self, type, value, trace):
         self.close()
         
-    def name(self):
-        return self.buf.name
+#     def name(self):
+#         return self.buf.name
         
     def __len__(self):
         return self._len

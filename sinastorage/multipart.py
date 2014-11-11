@@ -3,7 +3,7 @@
 Created on 2014年4月29日
 
 '''
-from filechunkio import FileChunkIO
+from sinastorage.vendored.filechunkio import FileChunkIO
 import time
 
 from . import bucket

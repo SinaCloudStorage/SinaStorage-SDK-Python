@@ -39,6 +39,6 @@ setup(
     download_url = 'https://github.com/SinaCloudStorage/SinaStorage-SDK-Python',
     keywords = ['sina', 'scs', 'sinacloudstorage'],
     packages=find_packages(exclude=["sample*", "sample"]),
-    install_requires=['filechunkio'],
+#     install_requires=['filechunkio'],
     
 )
