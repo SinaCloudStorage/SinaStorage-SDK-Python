@@ -114,9 +114,14 @@ class StreamHTTPSHandler(urllib.request.HTTPSHandler):
     pass
 
 class AnyMethodRequest(urllib.request.Request):
-    def __init__(self, method, *args, **kwds):
-        self.method = method
-        urllib.request.Request.__init__(self, *args, **kwds)
+    def __init__(self, *args, **kwds):
+        if six.PY3:
+            urllib.request.Request.__init__(self, *args, **kwds)
+        else:
+            if 'method' in kwds:
+                self.method = kwds['method']
+                del kwds['method']
+            urllib.request.Request.__init__(self, *args, **kwds)
 
     def get_method(self):
         return self.method
@@ -320,9 +325,7 @@ class SCSRequest(object):
         #http method 是GET时，不适用https方式请求
         if self.method.lower() == 'get' and bucket.base_url.startswith('https://') :
             bucket.base_url = 'http://'+bucket.base_url[8:]
-        
-        return self.urllib_request_cls(self.method, self.url(bucket.base_url),
-                                       data=data, headers=self.headers)
+        return self.urllib_request_cls(method=self.method, url=self.url(bucket.base_url), data=data, headers=self.headers)
 
     def url(self, base_url, arg_sep="&", bucketAsDomain=False):
         if bucketAsDomain:              #bucket name 作为域名
