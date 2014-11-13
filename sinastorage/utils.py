@@ -126,6 +126,8 @@ def aws_md5(data):
             hasher.update(chunk)
         data.seek(0)
     else:
+        if six.PY3 and isinstance(data, six.text_type):
+            data = bytes(data, 'utf-8')
         hasher.update(data)
     
     return hasher.hexdigest()#.decode("ascii")#hex(hasher.digest()).decode("ascii")

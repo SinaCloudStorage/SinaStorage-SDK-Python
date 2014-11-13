@@ -155,7 +155,7 @@ def _upload_part(bucket_name, key_name, upload_id, parts_amount, part, source_pa
                   
                 scsResponse = bucket.put(key_name, fp, headers=headers, args={'partNumber':'%i'%part.part_num,
                                                          'uploadId':upload_id})
-                part.etag = scsResponse.urllib2Response.info().getheader('ETag')
+                part.etag = scsResponse.urllib2Response.info()['ETag']
                 if num_cb:num_cb(upload_id, parts_amount, part)
                 return part
         except Exception as exc:
@@ -210,7 +210,7 @@ def _upload_part_by_fileWithCallback(bucket_name, key_name, upload_id, parts_amo
                                      headers=headers, 
                                      args={'partNumber':'%i'%part.part_num,
                                            'uploadId':upload_id})
-            part.etag = scsResponse.urllib2Response.info().getheader('ETag')
+            part.etag = scsResponse.urllib2Response.info()['ETag']
             part.response = scsResponse
             if num_cb:num_cb(upload_id, parts_amount, part)
             return part
@@ -922,7 +922,7 @@ class SCSBucket(object):
                     u'Bucket': u'create-a-bucket'
                 }
         '''
-        headers = headers.copy()
+        headers = headers.copy() if headers else {}
         if mimetype:
             headers["Content-Type"] = str(mimetype)
         elif "Content-Type" not in headers:
@@ -976,7 +976,6 @@ class SCSBucket(object):
         scsResponse.close()
         return parts
     
-        
     def multipart_upload(self, key_name, source_path, acl=None, metadata={}, mimetype=None,
             headers={}, cb=None, num_cb=None):
         try:
@@ -1021,8 +1020,11 @@ class SCSBucket(object):
             offset = i * bytes_per_chunk
             remaining_bytes = source_size - offset
             chunk_bytes = min([bytes_per_chunk, remaining_bytes])
-            pool.apply_async(_upload_part, args = (self.name, key_name, multipart.upload_id, multipart.parts_amount, part, source_path, offset, chunk_bytes,
-                                            cb, num_cb,), callback=lambda part : multipart.parts.append(part))
+            pool.apply_async(func = _upload_part, 
+                             args = (self.name, key_name, multipart.upload_id, 
+                                     multipart.parts_amount, part, source_path, 
+                                     offset, chunk_bytes,cb, num_cb,), 
+                             callback = lambda part : multipart.parts.append(part))
 #             partResult = _upload_part(bucketName, key_name, multipart.upload_id, multipart.parts_amount, part, source_path, offset, chunk_bytes,
 #                                             cb, num_cb)
             

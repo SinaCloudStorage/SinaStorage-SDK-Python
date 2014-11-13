@@ -530,29 +530,11 @@ class Test(unittest.TestCase):
         response = urllib.request.urlopen(url)
         self.assertEqual(len(content), int(response.info()['Content-Length']), 'The response header Content-Length is not match')
          
- 
 #     def test_multipart_upload(self):
 #         pass
-# 
-#     
 #     def test_list_all_part(self):
 #         pass
 
 if __name__ == "__main__":
-#     import sys;sys.argv = ['', 'Test.test_put_content']
     unittest.main()
 
-#     scs = SCSBucket()
-#     buckets = scs.list_buckets()
-#     for bucket in buckets:
-#         if bucket[0].startswith('junit-') or bucket[0].startswith('py-'):
-#             try:
-#                 s = SCSBucket(bucket[0])
-#                 file_gen = s.listdir()
-#                 for item in file_gen:
-#                     if not item[1]:
-#                         s.delete(item[0])
-#                 s.delete_bucket()
-#             except Exception as err:
-#                 print err
-#                 pass
