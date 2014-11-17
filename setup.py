@@ -9,11 +9,14 @@ DESCRIPTION = u"Python SDK For 新浪云存储"
 AUTHOR = "sina cloud storage"
 AUTHOR_EMAIL = "hanchao3@staff.sina.com.cn"
 URL = "http://open.sinastorage.com/"
-VERSION = '1.1.0'       #__import__(PACKAGE).__version__
+VERSION = __import__(PACKAGE).__version__
 
 def readme():
-    with open("README.md") as f:
-        return f.read()
+    try:
+        with open("README.md") as f:
+            return f.read()
+    except:
+        return ''
 
 setup(
     name=NAME,

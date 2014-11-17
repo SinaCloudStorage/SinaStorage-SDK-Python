@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 
-__version__ = "1.1.0"
+__version__ = "1.1.6"
 
 from .bucket import SCSFile, SCSBucket, SCSError, KeyNotFound
 SCSFile, SCSBucket, SCSError, KeyNotFound
