@@ -13,7 +13,7 @@ sys.path.insert(0, (os.path.join(os.path.dirname(__file__),"..")))
 import sinastorage
 from sinastorage.bucket import SCSBucket,ACL, SCSError, KeyNotFound, BadRequest
 
-sinastorage.setDefaultAppInfo('accessKey', 'accessSecret')
+sinastorage.setDefaultAppInfo('accessKey', 'secretKey')
 
 uploadedAmount = 0.0
 def putFileCallback(total, uploadAmount):
@@ -38,8 +38,8 @@ def put_file_relax():
     s.put_relax('testpdf.pdf', '61bb70865c15729def3fb61ee0d7ed49ccafd509', 2433230)
 
 def list_bucket_files():
-    s = SCSBucket('cloud0')
-    files_generator = s.listdir(prefix='10000', marker='10000/1007.txt', limit=10)#delimiter='/')
+    s = SCSBucket('test11')
+    files_generator = s.listdir()#delimiter='/')
     print '-----list_bucket_files---------'
     print '-----detail---------'
     print ('truncated : %r\n'
@@ -56,8 +56,8 @@ def list_bucket_files():
                       files_generator.common_prefixes_quantity,
                       files_generator.next_marker))
     print '-----file list---------'
-    for item in files_generator:
-        print item
+#     for item in files_generator:
+#         print item
 
 def list_bucket():
     s = SCSBucket()
@@ -140,16 +140,28 @@ def remove_bucket():
 
 ''' 分片上传 '''
 def customCallback(upload_id, part_num, total, received):
+    '''
+    分片上传进度回调函数
+    '''
     print '==customCallback=====upload_id=====',upload_id,'=======part_num=====',part_num,'-------total----------',total,'====received======',received
     
 def customNumCallback(upload_id, partAmount, part):
+    '''
+    分片上传完毕回调函数
+    '''
     print '==customNumCallback=====upload_id=====',upload_id,'-------partAmount----------',partAmount,'-------part----------',part.part_num
     
+def part_failed_cb(upload_id, part):
+    '''
+    分片上传失败回调函数
+    '''
+    print '==failed upload part #%d in upload_id %s'%(part.part_num, upload_id)
+    
 def multipartUpload():
-    s = SCSBucket('create-a-bucket11')
+    s = SCSBucket('vvzz')
 #     initMultipartUploadResult = s.initiateMultipartUpload('test-python.zip');
 #     print initMultipartUploadResult
-    s.multipart_upload('qt-opensource-mac-4.8.6.dmg', '/Users/hanchao/Desktop/qt-opensource-mac-4.8.6.dmg',cb=customCallback,num_cb=customNumCallback)
+    s.multipart_upload('ttt.zip', '/Users/hanchao/Desktop/ttt.zip',cb=customCallback,num_cb=customNumCallback, part_failed_cb=part_failed_cb)
     
 def listAllPart():
     s = SCSBucket('create-a-bucket11')

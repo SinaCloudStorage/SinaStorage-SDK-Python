@@ -127,14 +127,13 @@ class AnyMethodRequest(urllib.request.Request):
         return self.method
 
 def _upload_part(bucket_name, key_name, upload_id, parts_amount, part, source_path, offset, 
-                 chunk_bytes, cb, num_cb, amount_of_retries=0, debug=1):
+                 chunk_bytes, cb, num_cb, part_failed_cb, amount_of_retries=3, debug=1):
     from sinastorage.vendored.filechunkio import FileChunkIO
     from sinastorage.multipart import FileChunkWithCallback
     """
     Uploads a part with retries.
     """
     if debug == 1:
-#         print "_upload_part(%s, %s, %s, %s, %s)" % (source_path, offset, bytes, upload_id, part.part_num)
         six.print_("_upload_part(%s, %s, %s, %s, %s)" % (source_path, offset, bytes, upload_id, part.part_num))
   
     def _upload(retries_left=amount_of_retries):
@@ -149,45 +148,29 @@ def _upload_part(bucket_name, key_name, upload_id, parts_amount, part, source_pa
                              bytes=chunk_bytes, cb=cb, upload_id=upload_id, part_num=part.part_num) as fp:
                 headers={"Content-Length":str(chunk_bytes)}
                   
-                with FileChunkIO(source_path, 'rb', offset=offset,
-                                 bytes=chunk_bytes) as fpForMd5:
-                    headers["s-sina-sha1"] = aws_md5(fpForMd5)
+#                 with FileChunkIO(source_path, 'rb', offset=offset,
+#                                  bytes=chunk_bytes) as fpForMd5:
+#                     headers["s-sina-sha1"] = aws_md5(fpForMd5)
                   
                 scsResponse = bucket.put(key_name, fp, headers=headers, args={'partNumber':'%i'%part.part_num,
                                                          'uploadId':upload_id})
                 part.etag = scsResponse.urllib2Response.info()['ETag']
                 if num_cb:num_cb(upload_id, parts_amount, part)
                 return part
-        except Exception as exc:
-            raise exc
+        except :#Exception as exc
             if retries_left:
                 return _upload(retries_left=retries_left - 1)
             else:
-#                 print 'Failed uploading part #%d' % part.part_num
                 six.print_('Failed uploading part #%d' % part.part_num)
-#                 print exc
-                six.print_(exc)
-                raise exc
+#                 six.print_(exc)
+                if part_failed_cb : part_failed_cb(upload_id, part)
+                return None
         else:
             if debug == 1:
-#                 print '... Uploaded part #%d' % part.part_num
                 six.print_('... Uploaded part #%d' % part.part_num)
   
     return _upload()
 
-# def _upload_part(bucket_name, key_name, upload_id, part, source_path, offset, 
-#                  chunk_bytes, cb, num_cb, amount_of_retries=0, debug=1):
-#      
-#     fp = FileChunkWithCallback(source_path, 'rb', offset=offset,
-#                              bytes=chunk_bytes, cb=cb, upload_id=upload_id, part_num=part.part_num)
-#      
-#     try:
-#         partResult = _upload_part_by_fileWithCallback(bucket_name, key_name, upload_id, part, fp, num_cb, amount_of_retries)
-#     finally:
-#         fp.close()
-#     
-#     print '=====================partResult============',partResult
-#     return partResult
 
 def _upload_part_by_fileWithCallback(bucket_name, key_name, upload_id, parts_amount, part, 
                                      fileChunkWithCallback,
@@ -215,7 +198,7 @@ def _upload_part_by_fileWithCallback(bucket_name, key_name, upload_id, parts_amo
             if num_cb:num_cb(upload_id, parts_amount, part)
             return part
         except Exception as exc:
-            raise exc
+#             raise exc
             if retries_left:
                 return _upload(retries_left=retries_left - 1)
             else:
@@ -302,9 +285,12 @@ class SCSRequest(object):
             http://sinastorage.sinaapp.com/developer/interface/aws/auth.html
         '''
         stringToSign = self.descriptor()
+        six.print_("stringToSign------",stringToSign)
         key = cred.secret_key.encode("utf-8")
         hasher = hmac.new(key, stringToSign.encode("utf-8"), hashlib.sha1)
+        six.print_("b64encode(hasher.digest())-----",b64encode(hasher.digest()))
         sign = (b64encode(hasher.digest())[5:15]).decode("utf-8")     #ssig
+        six.print_("sign------",sign)
         '''
             Authorization=SINA product:/PL3776XmM
             Authorization:"SINA"+" "+"accessKey":"ssig"
@@ -476,7 +462,7 @@ class SCSResponse(object):
 
 class SCSBucket(object):
     default_encoding = "utf-8"
-    n_retries = 10
+    n_retries = 3
 
     def __init__(self, name=None, base_url=None, timeout=None, secure=False):
         if sinastorage.getDefaultAppInfo() is not None :
@@ -977,7 +963,7 @@ class SCSBucket(object):
         return parts
     
     def multipart_upload(self, key_name, source_path, acl=None, metadata={}, mimetype=None,
-            headers={}, cb=None, num_cb=None):
+            headers={}, cb=None, num_cb=None, part_failed_cb=None):
         try:
             # multipart portions copyright Fabian Topfstedt
             # https://pypi.python.org/pypi/filechunkio/1.5
@@ -1023,8 +1009,8 @@ class SCSBucket(object):
             pool.apply_async(func = _upload_part, 
                              args = (self.name, key_name, multipart.upload_id, 
                                      multipart.parts_amount, part, source_path, 
-                                     offset, chunk_bytes,cb, num_cb,), 
-                             callback = lambda part : multipart.parts.append(part))
+                                     offset, chunk_bytes,cb, num_cb, part_failed_cb,), 
+                             callback = lambda part : multipart.parts.append(part) if part is not None else None)
 #             partResult = _upload_part(bucketName, key_name, multipart.upload_id, multipart.parts_amount, part, source_path, offset, chunk_bytes,
 #                                             cb, num_cb)
             
